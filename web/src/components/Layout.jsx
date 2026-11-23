@@ -6,6 +6,7 @@ import {
 import { ROLES, can } from '../data/api';
 import { useSession, useCollection } from '../data/hooks';
 import { initials } from './ui';
+import InstallButton from './InstallButton';
 
 const MAIN = [
   ['/', 'dashboard', 'Dashboard', LayoutGrid],
@@ -84,6 +85,7 @@ export default function Layout({ children, demo }) {
             <p>Welcome to JPCS HUB Management Portal</p>
           </div>
           <div className="row">
+            <InstallButton className="btn light sm" />
             {demo && <span className="demo-pill" title="No Firebase config yet: data is saved in this browser only">Demo mode</span>}
             <div className="top-user"><span className="green-dot" /> {user.username}</div>
           </div>

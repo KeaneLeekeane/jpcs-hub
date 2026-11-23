@@ -92,6 +92,8 @@ firebase deploy --only hosting   # publish to https://jpcs-hub-e1240.web.app
 
 Every push to `main` also publishes the portal to **GitHub Pages** (workflow *Publish web portal to GitHub Pages*).
 
+**Laptop app:** open the portal in Chrome or Edge and click **Install app** (on the login page, or the install icon in the address bar). JPCS HUB then opens in its own window with a desktop/Start-menu icon. On phones, *Add to Home screen* does the same (handy for iPhone users).
+
 **Demo mode:** run with `VITE_DEMO=1 npm run dev` (or with no API key) and the portal runs with sample data saved in the browser, so every screen can be tried right away. Demo logins: `admin/admin123`, `officer/officer123`, `treasurer/treasurer123`, `auditor/auditor123`, student `2026-001/student123`. Open two browser tabs (officer + student) to try the messenger and video call.
 
 ## 3. Run and build the mobile app

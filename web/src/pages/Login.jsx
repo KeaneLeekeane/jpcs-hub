@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, authError } from '../data/api';
 import { DEMO_ACCOUNTS } from '../data/seed';
+import InstallButton from '../components/InstallButton';
 
 export default function Login({ notice, clearNotice }) {
   const [login, setLogin] = useState('');
@@ -39,6 +40,7 @@ export default function Login({ notice, clearNotice }) {
           <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
         </label>
         <button className="btn" style={{ width: '100%', marginTop: 4 }} disabled={busy}>{busy ? 'Signing in…' : 'Log In'}</button>
+        <InstallButton style={{ width: '100%', marginTop: 10 }} />
 
         {api.isDemo ? (
           <div className="demo-box">
