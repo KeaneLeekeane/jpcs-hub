@@ -20,8 +20,9 @@ export const ACCESS = {
   dashboard: ['admin', 'officer', 'treasurer', 'auditor'],
   members: ['admin', 'officer'],
   accounts: ['admin'],
-  announcements: ['admin', 'officer'],
-  events: ['admin', 'officer', 'treasurer'],
+  announcements: ['admin', 'officer', 'treasurer', 'auditor', 'student'],
+  events: ['admin', 'officer', 'treasurer', 'auditor', 'student'],
+  membership: ['student'],
   documents: ['admin', 'officer', 'treasurer', 'auditor'],
   finance: ['admin', 'treasurer', 'auditor'],
   reports: ['admin', 'officer', 'treasurer', 'auditor'],
@@ -29,6 +30,8 @@ export const ACCESS = {
 };
 
 export const can = (role, page) => (ACCESS[page] || []).includes(role);
+// Only the Admin and Officers can create, edit or delete announcements and events.
+export const canManage = (role) => ['admin', 'officer'].includes(role);
 
 export const ONLINE_WINDOW_MS = 75 * 1000;
 export const isOnline = (user) => !!user && Date.now() - (user.last_active || 0) < ONLINE_WINDOW_MS;

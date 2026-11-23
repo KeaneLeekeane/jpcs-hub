@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api, fmtDate } from '../data/api';
+import { api, fmtDate, canManage } from '../data/api';
 import { useCollection, useSession } from '../data/hooks';
 import { Modal, Confirm, PageHead, Field, Loading } from '../components/ui';
 
@@ -37,6 +37,8 @@ function AnnouncementForm({ item, onClose }) {
 }
 
 export default function Announcements() {
+  const { user } = useSession();
+  const manage = canManage(user.role);
   const items = useCollection('announcements', { orderBy: ['date_posted', 'desc'] });
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -44,7 +46,7 @@ export default function Announcements() {
   return (
     <>
       <PageHead title="Announcements" sub="Post important updates for JPCS members.">
-        <button className="btn" onClick={() => setEditing({})}>+ Create Announcement</button>
+        {manage && <button className="btn" onClick={() => setEditing({})}>+ Create Announcement</button>}
       </PageHead>
       {!items ? <Loading /> : items.length === 0 ? <div className="card empty">No announcements yet.</div> : (
         <div className="grid g2">
@@ -53,10 +55,12 @@ export default function Announcements() {
               <h3>{a.title}</h3>
               <p>{a.content}</p>
               <div className="item-meta">Posted: {fmtDate(a.date_posted)}{a.posted_by_name ? ` · ${a.posted_by_name}` : ''}</div>
-              <div style={{ marginTop: 10 }}>
-                <button className="chip-btn edit" onClick={() => setEditing(a)}>Edit</button>
-                <button className="chip-btn del" onClick={() => setDeleting(a)}>Delete</button>
-              </div>
+              {manage && (
+                <div style={{ marginTop: 10 }}>
+                  <button className="chip-btn edit" onClick={() => setEditing(a)}>Edit</button>
+                  <button className="chip-btn del" onClick={() => setDeleting(a)}>Delete</button>
+                </div>
+              )}
             </div>
           ))}
         </div>

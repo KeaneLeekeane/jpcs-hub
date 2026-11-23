@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CalendarDays, MapPin } from 'lucide-react';
-import { api, can } from '../data/api';
+import { api, canManage } from '../data/api';
 import { useCollection, useSession } from '../data/hooks';
 import { Modal, Confirm, PageHead, Field, StatusBadge, Loading } from '../components/ui';
 
@@ -52,7 +52,7 @@ function EventForm({ item, onClose }) {
 
 export default function Events() {
   const { user } = useSession();
-  const editable = can(user.role, 'announcements'); // admin + officer manage events
+  const editable = canManage(user.role); // admin + officer manage events
   const events = useCollection('events', { orderBy: ['event_date', 'asc'] });
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);

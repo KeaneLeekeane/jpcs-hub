@@ -16,6 +16,7 @@ import Documents from './pages/Documents';
 import Finance from './pages/Finance';
 import Reports from './pages/Reports';
 import Messenger from './pages/Messenger';
+import MyMembership from './pages/MyMembership';
 
 const HEARTBEAT_MS = 30000;
 
@@ -104,6 +105,7 @@ export default function App() {
               <Route path="/finance" element={<Guard page="finance"><Finance /></Guard>} />
               <Route path="/reports" element={<Guard page="reports"><Reports /></Guard>} />
               <Route path="/messenger" element={<Guard page="messenger"><Messenger /></Guard>} />
+              <Route path="/membership" element={<Guard page="membership"><MyMembership /></Guard>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>

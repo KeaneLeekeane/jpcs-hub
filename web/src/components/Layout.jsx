@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutGrid, User, Settings, Megaphone, CalendarDays, FileText, PhilippinePeso, BarChart3,
-  MessageSquare, LogOut,
+  MessageSquare, LogOut, IdCard,
 } from 'lucide-react';
 import { ROLES, can } from '../data/api';
 import { useSession, useCollection } from '../data/hooks';
@@ -16,6 +16,7 @@ const MAIN = [
   ['/announcements', 'announcements', 'Announcements', Megaphone],
   ['/events', 'events', 'Events', CalendarDays],
   ['/documents', 'documents', 'Documents', FileText],
+  ['/membership', 'membership', 'My Membership', IdCard],
 ];
 const MANAGEMENT = [
   ['/finance', 'finance', 'Financial Management', PhilippinePeso],
@@ -25,7 +26,7 @@ const MANAGEMENT = [
 export const TITLES = {
   '/': 'Dashboard', '/members': 'Membership Records', '/accounts': 'User Accounts',
   '/announcements': 'Announcements', '/events': 'Events Management', '/documents': 'Document Management',
-  '/finance': 'Financial Management', '/reports': 'Reports', '/messenger': 'Messenger',
+  '/finance': 'Financial Management', '/reports': 'Reports', '/messenger': 'Messenger', '/membership': 'My Membership',
 };
 
 function Section({ label, items, role }) {
