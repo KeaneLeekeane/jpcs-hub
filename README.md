@@ -24,6 +24,8 @@ Capstone project · Institute of Information and Computing Technology · Pateros
 - Messenger: real-time chat with students, active status, read indicators, video call
 
 **Mobile app (Android, iOS, HarmonyOS)**
+- Staff (Admin, Officer, Treasurer, Auditor): Dashboard, Membership Records, User Accounts (**Admin only**), Announcements, Events, Documents (photo upload), Financial Management (receipt/proof photos from the camera, submit and auditor approval), Reports — same access rules as the web portal
+- Students: Messenger, Announcements, Events, My Membership, Profile
 - Login for students (username/student no. created by officers) and officers
 - Real-time Messenger with JPCS Officers, active status and read indicators
 - Video call (both directions: student ↔ officer, app ↔ web portal), mute, camera on/off, switch camera, speaker
@@ -74,8 +76,8 @@ Also `presence/{uid}` (active status) and `settings/bootstrap` (first-time setup
 7. Open the web portal, click **Create the admin account** on the login page, and create the Admin/Faculty Adviser. Then add the officers, Treasurer and Auditor in **User Accounts**, and members in **Membership Records**.
 
 ### File uploads (receipts, proofs, documents)
-Firebase Storage needs the Blaze (pay-as-you-go) plan. To stay free, create a free [Cloudinary](https://cloudinary.com) account, add an **unsigned upload preset**, and set
-`VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET` (in `web/.env`). If these are not set, uploads go to Firebase Storage (deploy `storage.rules` too).
+On the free Spark plan, uploads are saved **inside Firestore** (`files` collection): photos are compressed automatically, other files can be up to about 700 KB. No extra setup is needed.
+Optional: set `VITE_CLOUDINARY_CLOUD_NAME` + `VITE_CLOUDINARY_UPLOAD_PRESET` to use a free Cloudinary account instead, or `VITE_USE_FIREBASE_STORAGE=1` on the Blaze plan (deploy `storage.rules` too).
 
 ### Video calls between different networks
 Calls use Google's public STUN servers, which work on most Wi-Fi/mobile networks. Some school or mobile networks need a TURN relay; set `VITE_TURN_URL`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL` (web) and the matching `EXPO_PUBLIC_TURN_*` (mobile), e.g. from a free metered.ca Open Relay account.

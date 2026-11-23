@@ -19,9 +19,10 @@ type Props = {
   memberId: string;
   onBack?: () => void;
   onMenu?: () => void;
+  aboveTabs?: boolean; // a tab bar sits below, so no extra bottom inset
 };
 
-export default function ChatScreen({ convoId, title, memberId, onBack, onMenu }: Props) {
+export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, aboveTabs }: Props) {
   useNow();
   const { uid, user, isStudent } = useSession();
   const { startCall } = useCalls();
@@ -103,9 +104,6 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu }:
           data={messages || []}
           keyExtractor={(m) => m.id}
           contentContainerStyle={{ padding: 14, gap: 10 }}
-          ListEmptyComponent={messages ? (
-            <Text style={s.empty}>{isStudent ? 'Ask the JPCS Officers about membership, events or other concerns.' : 'No messages yet.'}</Text>
-          ) : undefined}
           renderItem={({ item: m }) => {
             const mine = m.sender_type === mySide;
             return (
@@ -120,7 +118,12 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu }:
             );
           }}
         />
-        <View style={[s.inputRow, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+        {messages && messages.length === 0 && (
+          <View style={s.emptyWrap} pointerEvents="none">
+            <Text style={s.empty}>{isStudent ? 'Ask the JPCS Officers about membership, events or other concerns.' : 'No messages yet. Say hello!'}</Text>
+          </View>
+        )}
+        <View style={[s.inputRow, { paddingBottom: aboveTabs ? 10 : Math.max(insets.bottom, 10) }]}>
           <TextInput
             style={s.input} value={text} onChangeText={setText} placeholder="Type your message..."
             placeholderTextColor="#9aa3b5" multiline maxLength={2000}
@@ -136,7 +139,8 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu }:
 
 const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#f8fafd' },
-  empty: { textAlign: 'center', color: colors.muted, marginTop: 30, transform: [{ scaleY: -1 }], paddingHorizontal: 30 },
+  emptyWrap: { position: 'absolute', top: 30, left: 0, right: 0 },
+  empty: { textAlign: 'center', color: colors.muted, paddingHorizontal: 30 },
   bubble: { maxWidth: '80%', paddingHorizontal: 13, paddingVertical: 10, borderRadius: 14, borderWidth: 1 },
   mine: { alignSelf: 'flex-end', backgroundColor: colors.bubbleMine, borderColor: '#d7e2fa', borderBottomRightRadius: 4 },
   theirs: { alignSelf: 'flex-start', backgroundColor: '#fff', borderColor: colors.line, borderBottomLeftRadius: 4 },

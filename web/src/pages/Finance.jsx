@@ -3,6 +3,7 @@ import { Printer } from 'lucide-react';
 import { api, peso, fmtDate, fmtDateTime, authError } from '../data/api';
 import { useCollection, useDoc, useSession } from '../data/hooks';
 import { PageHead, Field, StatusBadge, Stat, Confirm, Loading } from '../components/ui';
+import { Attachment } from '../components/FileLink';
 
 const CATEGORIES = ['Food', 'Transportation', 'Papers & Printing', 'Materials & Supplies', 'Venue', 'Others'];
 const LOCKED = ['For Review', 'Approved'];
@@ -104,16 +105,6 @@ function ExpenseCard({ eventId, liq }) {
       </div>
       <button className="btn" disabled={busy || locked}>{busy ? 'Saving…' : 'Add Expense'}</button>
     </form>
-  );
-}
-
-function Attachment({ url, label }) {
-  if (!url) return <span className="muted">—</span>;
-  const isImg = url.startsWith('data:image') || /\.(png|jpe?g|gif|webp|heic)(\?|$)/i.test(url) || url.includes('/image/upload/');
-  return (
-    <a href={url} target="_blank" rel="noreferrer" title={label}>
-      {isImg ? <img className="receipt-thumb" src={url} alt={label} /> : 'View'}
-    </a>
   );
 }
 

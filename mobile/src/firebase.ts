@@ -1,8 +1,9 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import * as FirebaseAuth from 'firebase/auth';
 import {
-  getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, query, where, increment,
+  getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDoc, query, where, increment,
 } from 'firebase/firestore';
+import { deleteApp } from 'firebase/app';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firebaseConfig, isConfigured, USERNAME_DOMAIN } from './firebaseConfig';
 
@@ -61,6 +62,25 @@ export const add = async (path: string, data: object) => (await addDoc(collectio
 export const set = (path: string, data: object, merge = false) => setDoc(doc(db!, path), data, merge ? { merge: true } : {});
 export const update = (path: string, data: object) => updateDoc(doc(db!, path), data as any);
 export const newId = (path: string) => doc(collection(db!, path)).id;
+export const remove = (path: string) => deleteDoc(doc(db!, path));
+export async function get(path: string): Promise<Row | null> {
+  const snap = await getDoc(doc(db!, path));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+// Creates another person's login without signing the current user out,
+// using a temporary second Firebase app (same approach as the web portal).
+export async function createAccount(login: string, password: string) {
+  const tmp = initializeApp(firebaseConfig, 'create-' + Date.now());
+  try {
+    const tmpAuth = FirebaseAuth.initializeAuth(tmp, { persistence: (FirebaseAuth as any).inMemoryPersistence });
+    const cred = await FirebaseAuth.createUserWithEmailAndPassword(tmpAuth, toEmail(login), password);
+    await FirebaseAuth.signOut(tmpAuth);
+    return cred.user.uid;
+  } finally {
+    await deleteApp(tmp);
+  }
+}
 export const inc = (n: number) => increment(n);
 
 export const ONLINE_WINDOW_MS = 75 * 1000;
@@ -70,6 +90,9 @@ export function authError(e: any) {
   const c = String(e?.code || '');
   if (c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found') || c.includes('invalid-email'))
     return 'Invalid username or password.';
+  if (c.includes('email-already-in-use')) return 'That username is already in use.';
+  if (c.includes('weak-password')) return 'Password must be at least 6 characters.';
+  if (c.includes('permission-denied')) return 'You do not have permission to do that.';
   if (c.includes('too-many-requests')) return 'Too many attempts. Please wait and try again.';
   if (c.includes('network')) return 'No internet connection.';
   return e?.message || 'Something went wrong.';

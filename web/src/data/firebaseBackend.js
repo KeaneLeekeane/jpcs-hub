@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { firebaseConfig, isDemoMode } from '../firebaseConfig';
-import { toEmail, uploadToCloudinary, hasCloudinary } from './common';
+import { toEmail, uploadToCloudinary, hasCloudinary, fileToStorableDataURL } from './common';
 
 // Not initialized in demo mode (no config yet).
 const app = isDemoMode ? null : initializeApp(firebaseConfig);
@@ -107,6 +107,14 @@ export const firebaseBackend = {
 
   async upload(file, folder) {
     if (hasCloudinary()) return uploadToCloudinary(file, folder);
+    if (import.meta.env.VITE_USE_FIREBASE_STORAGE !== '1') {
+      // Free plan: keep the file inside Firestore.
+      const data = await fileToStorableDataURL(file);
+      const ref2 = await addDoc(collection(db, 'files'), {
+        data, name: file.name, folder, created_by: auth.currentUser?.uid || '', created_at: Date.now(),
+      });
+      return { url: `fsfile:${ref2.id}`, name: file.name };
+    }
     const r = ref(getStorage(app), `${folder}/${Date.now()}_${file.name}`);
     await uploadBytes(r, file);
     return { url: await getDownloadURL(r), name: file.name };

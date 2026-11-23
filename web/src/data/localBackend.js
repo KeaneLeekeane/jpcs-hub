@@ -2,7 +2,7 @@
 // between open tabs, so the messenger and video call can be tried with two tabs
 // (one signed in as an officer, one as a student). Used only when no Firebase
 // config is set.
-import { toEmail } from './common';
+import { toEmail, fileToStorableDataURL } from './common';
 import { demoSeed } from './seed';
 import { isDemoMode } from '../firebaseConfig';
 
@@ -190,14 +190,7 @@ export const localBackend = {
   newId: () => rid(),
 
   async upload(file) {
-    if (file.size > 1.5 * 1024 * 1024) throw new Error('Demo mode keeps files in the browser, so the limit is 1.5 MB per file.');
-    const url = await new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result);
-      r.onerror = rej;
-      r.readAsDataURL(file);
-    });
-    return { url, name: file.name };
+    return { url: await fileToStorableDataURL(file), name: file.name };
   },
 
   resetDemo() {

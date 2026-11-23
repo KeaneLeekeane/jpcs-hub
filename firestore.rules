@@ -80,6 +80,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Uploaded files (receipts, proofs, documents) stored in Firestore on the free plan
+    match /files/{id} {
+      allow read: if isStaff();
+      allow create: if active() && role() in ['admin', 'officer', 'treasurer']
+                    && request.resource.data.created_by == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     // EXPENSE_ITEM
     match /expense_items/{id} {
       allow read: if isStaff();

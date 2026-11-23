@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react';
 import { api, fmtDate, authError } from '../data/api';
 import { useCollection, useSession } from '../data/hooks';
 import { Confirm, PageHead, Field, Loading } from '../components/ui';
+import { FileLink } from '../components/FileLink';
 
 const CATEGORIES = ['Minutes of Meeting', 'Constitution & By-Laws', 'Letters & Memos', 'Event Proposal', 'Reports', 'Forms', 'Others'];
 
@@ -53,7 +54,7 @@ export default function Documents() {
             </Field>
           </div>
           <Field label="Select File">
-            <div className="file-box"><input ref={fileRef} type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
+            <div className="file-box"><input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
           </Field>
           <button className="btn" disabled={busy}>{busy ? 'Uploading…' : 'Add Document'}</button>
         </form>
@@ -74,7 +75,7 @@ export default function Documents() {
                     <td>{d.category}</td>
                     <td>{fmtDate(d.date_uploaded)}</td>
                     <td>{d.uploaded_by_name}</td>
-                    <td><a href={d.file_path} target="_blank" rel="noreferrer" download={d.file_name}>Open</a></td>
+                    <td><FileLink url={d.file_path} name={d.file_name} /></td>
                     {canEdit && <td><button className="chip-btn del" onClick={() => setDeleting(d)}>Delete</button></td>}
                   </tr>
                 ))}
