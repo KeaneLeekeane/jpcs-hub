@@ -26,6 +26,7 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
   const { startCall } = useCalls();
   const insets = useSafeAreaInsets();
   const groupForStudent = thread.kind === 'student' && isStudent; // "JPCS Officers"
+  const canModerate = user.role === 'admin' && thread.kind === 'student'; // Admin can remove any message
   const messages = useCollection(`${thread.base}/messages`, { orderBy: ['date_sent', 'desc'] });
   const presence = useCollection('presence');
   const [text, setText] = useState('');
@@ -131,8 +132,8 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
                 <View style={{ maxWidth: '78%' }}>
                   {!mine && firstOfGroup && thread.kind === 'student' && <Text style={s.name}>{who}</Text>}
                   <Pressable
-                    onPress={mine && !m.deleted ? () => setSelected(selected === m.id ? null : m.id) : undefined}
-                    onLongPress={mine && !m.deleted ? () => askDelete(m) : undefined} delayLongPress={400}
+                    onPress={(mine || canModerate) && !m.deleted ? () => setSelected(selected === m.id ? null : m.id) : undefined}
+                    onLongPress={(mine || canModerate) && !m.deleted ? () => askDelete(m) : undefined} delayLongPress={400}
                     style={[s.bubble, mine ? s.mine : s.theirs, m.deleted && s.deleted, selected === m.id && { opacity: 0.85 }]}>
                     <Text style={[s.msg, mine && !m.deleted && { color: '#fff' }, m.deleted && s.deletedText]}>
                       {m.deleted ? (mine ? 'You unsent a message' : 'Message deleted') : m.message_text}
@@ -144,7 +145,7 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
                     )}
                   </Pressable>
                   {selected === m.id && (
-                    <Pressable onPress={() => askDelete(m)} style={s.delBtn} accessibilityLabel="Delete message">
+                    <Pressable onPress={() => askDelete(m)} style={[s.delBtn, !mine && { alignSelf: 'flex-start' }]} accessibilityLabel="Delete message">
                       <Ionicons name="trash-outline" size={15} color="#c53030" />
                       <Text style={{ color: '#c53030', fontWeight: '700', marginLeft: 5 }}>Delete</Text>
                     </Pressable>

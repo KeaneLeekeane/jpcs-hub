@@ -22,6 +22,8 @@ function lastSeen(p) {
 function ChatPane({ thread, peerOnline, peerStatus, onCall }) {
   const { uid, user } = useSession();
   const staff = isStaff(user.role);
+  // Admin can remove any message in student conversations (moderation).
+  const canModerate = user.role === 'admin' && thread.kind === 'student';
   const messages = useCollection(`${thread.base}/messages`, { orderBy: ['date_sent', 'asc'] });
   const [text, setText] = useState('');
   const [deleting, setDeleting] = useState(null);
@@ -102,8 +104,8 @@ function ChatPane({ thread, peerOnline, peerStatus, onCall }) {
                   )}
                 </div>
               </div>
-              {mine && !m.deleted && (
-                <button className="msg-del" title="Delete message" onClick={() => setDeleting(m)}><Trash2 size={14} /></button>
+              {(mine || canModerate) && !m.deleted && (
+                <button className="msg-del" title={mine ? 'Delete message' : 'Delete message (Admin)'} onClick={() => setDeleting(m)}><Trash2 size={14} /></button>
               )}
             </div>
           );

@@ -114,7 +114,8 @@ service cloud.firestore {
         // Afterwards: the read indicator, or the sender deleting (unsending) it.
         allow update: if (isStaff() || (active() && request.auth.uid == studentUid))
                       && (onlyChanges(['status'])
-                          || (resource.data.sender_uid == request.auth.uid && onlyChanges(['deleted', 'message_text'])));
+                          || (resource.data.sender_uid == request.auth.uid && onlyChanges(['deleted', 'message_text']))
+                          || (isAdmin() && onlyChanges(['deleted', 'message_text'])));
         allow delete: if isAdmin();
       }
     }

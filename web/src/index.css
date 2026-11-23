@@ -280,3 +280,4 @@ textarea.input { resize: vertical; min-height: 90px; }
 .msg-del:hover { color: var(--red); }
 .bubble.deleted { background: transparent !important; color: var(--muted) !important; font-style: italic; border: 1px dashed #cfd6e4 !important; }
 .bubble.deleted .meta { color: var(--muted) !important; }
+.msg-row.theirs .msg-del { order: 3; }
