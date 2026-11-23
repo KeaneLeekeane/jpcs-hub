@@ -5,7 +5,6 @@ import { Modal, Confirm, PageHead, Field, StatusBadge, Loading } from '../compon
 import { Avatar } from '../components/Avatar';
 
 const STAFF_ROLES = ['admin', 'officer', 'treasurer', 'auditor'];
-const ALL_ROLES = [...STAFF_ROLES, 'student'];
 
 function AccountForm({ account, onClose }) {
   const { uid } = useSession();
@@ -31,7 +30,8 @@ function AccountForm({ account, onClose }) {
         });
       } else {
         const data = { full_name: form.full_name.trim(), email: form.email.trim() };
-        data.role = form.role;
+        // Student accounts keep their role (they belong to Membership Records).
+        if (account.role !== 'student') data.role = form.role;
         await api.update(`users/${account.id}`, data);
       }
       onClose();
@@ -52,11 +52,16 @@ function AccountForm({ account, onClose }) {
         </Field>
         <Field label="E-mail (optional)"><input className="input" type="email" value={form.email} onChange={set('email')} /></Field>
         <Field label="Role">
-          <select className="input" value={form.role} onChange={set('role')} disabled={account.id === uid}>
-            {(isNew ? STAFF_ROLES : ALL_ROLES).map((r) => <option key={r} value={r}>{ROLES[r]}</option>)}
-          </select>
+          {account.role === 'student' ? (
+            <input className="input" value="Student" disabled />
+          ) : (
+            <select className="input" value={form.role} onChange={set('role')} disabled={account.id === uid}>
+              {STAFF_ROLES.map((r) => <option key={r} value={r}>{ROLES[r]}</option>)}
+            </select>
+          )}
         </Field>
         {account.id === uid && <div className="small muted" style={{ marginTop: -8, marginBottom: 12 }}>You can't change your own role.</div>}
+        {account.role === 'student' && <div className="small muted" style={{ marginTop: -8, marginBottom: 12 }}>Student accounts are managed in Membership Records.</div>}
         {isNew && <div className="small muted" style={{ marginTop: -8, marginBottom: 12 }}>Student logins are created in Membership Records.</div>}
         {isNew && (
           <Field label="Temporary Password">

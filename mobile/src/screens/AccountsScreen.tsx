@@ -10,7 +10,6 @@ import { ROLES, fmtDate } from '../helpers';
 import { colors } from '../theme';
 
 const STAFF_ROLES: [string, string][] = [['admin', 'Admin'], ['officer', 'Officer'], ['treasurer', 'Treasurer'], ['auditor', 'Auditor']];
-const ALL_ROLES: [string, string][] = [...STAFF_ROLES, ['student', 'Student']];
 
 function AccountForm({ account, onClose }: { account: Row | null; onClose: () => void }) {
   const { uid } = useSession();
@@ -36,7 +35,8 @@ function AccountForm({ account, onClose }: { account: Row | null; onClose: () =>
         await set(`users/${newUid}`, { full_name: full.trim(), username: u, email: email.trim(), role, status: 'active', date_created: Date.now(), last_active: 0 });
       } else {
         const data: Record<string, any> = { full_name: full.trim(), email: email.trim() };
-        if (!self) data.role = role;
+        // Student accounts keep their role (they belong to Membership Records).
+        if (!self && account!.role !== 'student') data.role = role;
         await update(`users/${account!.id}`, data);
       }
       onClose();
@@ -53,8 +53,10 @@ function AccountForm({ account, onClose }: { account: Row | null; onClose: () =>
       <Field label="Full Name" value={full} onChange={setFull} />
       <Field label="Username" value={username} onChange={setUsername} editable={isNew} keyboard="email-address" />
       <Field label="E-mail (optional)" value={email} onChange={setEmail} keyboard="email-address" />
-      {self ? <T small muted style={{ marginBottom: 12 }}>Role: {ROLES[role]} (you can't change your own role)</T>
-        : <Chips label="Role" options={isNew ? STAFF_ROLES : ALL_ROLES} value={role} onChange={setRole} />}
+      {account?.role === 'student'
+        ? <T small muted style={{ marginBottom: 12 }}>Role: Student (managed in Membership Records)</T>
+        : self ? <T small muted style={{ marginBottom: 12 }}>Role: {ROLES[role]} (you can't change your own role)</T>
+          : <Chips label="Role" options={STAFF_ROLES} value={role} onChange={setRole} />}
       {isNew && <T small muted style={{ marginBottom: 12 }}>Student logins are created in Membership Records.</T>}
       {isNew && <Field label="Temporary Password" value={password} onChange={setPassword} secure />}
       <Btn title="Save Account" onPress={save} busy={busy} />
