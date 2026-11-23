@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  AppState, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View,
+  Alert, AppState, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,29 +9,25 @@ import { useCollection, useNow, useSession } from '../session';
 import { useCalls } from '../CallLayer';
 import { Avatar, Header, IconButton } from '../ui';
 import { colors } from '../theme';
+import type { Thread } from '../thread';
 
 const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 const fmtSeen = (ms: number) => new Date(ms).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 type Props = {
-  convoId: string; // = the student's uid
-  title: string;
-  memberId: string;
+  thread: Thread;
   onBack?: () => void;
-  onMenu?: () => void;
   aboveTabs?: boolean; // a tab bar sits below, so no extra bottom inset
 };
 
-export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, aboveTabs }: Props) {
+export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
   useNow();
   const { uid, user, isStudent } = useSession();
   const { startCall } = useCalls();
   const insets = useSafeAreaInsets();
-  const mySide = isStudent ? 'student' : 'officer';
-  const messages = useCollection(`conversations/${convoId}/messages`, { orderBy: ['date_sent', 'desc'] });
-  // Presence: a student sees whether any officer is active; an officer sees the student.
-  const staffPresence = useCollection(isStudent ? 'presence' : null, { where: [['staff', true]] });
-  const studentPresence = useCollection(isStudent ? null : 'presence');
+  const groupForStudent = thread.kind === 'student' && isStudent; // "JPCS Officers"
+  const messages = useCollection(`${thread.base}/messages`, { orderBy: ['date_sent', 'desc'] });
+  const presence = useCollection('presence');
   const [text, setText] = useState('');
   const [appActive, setAppActive] = useState(AppState.currentState === 'active');
   const listRef = useRef<FlatList>(null);
@@ -43,23 +39,24 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
 
   let online = false;
   let status = 'Offline';
-  if (isStudent) {
-    online = (staffPresence || []).some(isOnline);
+  if (groupForStudent) {
+    online = (presence || []).some((p) => p.staff && p.id !== uid && isOnline(p));
     status = online ? 'An officer is active now' : 'Officers will reply soon';
   } else {
-    const p = (studentPresence || []).find((r) => r.id === convoId);
+    const p = (presence || []).find((r) => r.id === thread.peerUid);
     online = isOnline(p);
     status = online ? 'Active now' : p?.last_active ? `Last active ${fmtSeen(p.last_active)}` : 'Offline';
   }
 
-  // Read indicators: mark the other side's messages as read while this chat is open.
+  // Read indicators: mark messages from others as read while this chat is open.
   useEffect(() => {
     if (!messages || !appActive) return;
     const unread = messages.filter((m) => m.sender_uid !== uid && m.status !== 'read');
     if (!unread.length) return;
-    unread.forEach((m) => update(`conversations/${convoId}/messages/${m.id}`, { status: 'read' }).catch(() => {}));
-    update(`conversations/${convoId}`, isStudent ? { student_unread: 0 } : { staff_unread: 0 }).catch(() => {});
-  }, [messages, appActive, convoId, uid, isStudent]);
+    unread.forEach((m) => update(`${thread.base}/messages/${m.id}`, { status: 'read' }).catch(() => {}));
+    const reset = thread.kind === 'dm' ? { [`unread_${uid}`]: 0 } : isStudent ? { student_unread: 0 } : { staff_unread: 0 };
+    update(thread.base, reset).catch(() => {});
+  }, [messages, appActive, thread.base, thread.kind, uid, isStudent]);
 
   const send = async () => {
     const body = text.trim();
@@ -67,35 +64,41 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
     setText('');
     const now = Date.now();
     const name = user.full_name || user.username;
-    await add(`conversations/${convoId}/messages`, {
-      member_id: memberId || '', user_id: isStudent ? '' : uid, sender_uid: uid, sender_name: name,
-      sender_type: mySide, message_text: body, date_sent: now, status: 'sent',
+    await add(`${thread.base}/messages`, {
+      member_id: thread.kind === 'student' ? (thread.memberId || user.member_id || '') : '',
+      user_id: isStudent ? '' : uid, sender_uid: uid, sender_name: name,
+      sender_type: isStudent ? 'student' : 'officer', message_text: body, date_sent: now, status: 'sent',
     });
-    const convo: Record<string, any> = {
-      last_message: body, last_time: now, last_sender_type: mySide,
-      [isStudent ? 'staff_unread' : 'student_unread']: inc(1),
-    };
-    if (isStudent) Object.assign(convo, { student_uid: uid, student_name: name, member_id: user.member_id || '' });
-    else Object.assign(convo, { student_uid: convoId, student_name: title || 'Student', member_id: memberId || '' });
-    await set(`conversations/${convoId}`, convo, true);
+    const meta: Record<string, any> = { last_message: body, last_time: now, last_sender_uid: uid };
+    if (thread.kind === 'dm') {
+      await update(thread.base, { ...meta, [`unread_${thread.peerUid}`]: inc(1) });
+    } else {
+      Object.assign(meta, { last_sender_type: isStudent ? 'student' : 'officer', [isStudent ? 'staff_unread' : 'student_unread']: inc(1) });
+      if (isStudent) Object.assign(meta, { student_uid: uid, student_name: name, member_id: user.member_id || '' });
+      else Object.assign(meta, { student_uid: thread.id, student_name: thread.title || 'Student', member_id: thread.memberId || '' });
+      await set(thread.base, meta, true);
+    }
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  const call = () => startCall(isStudent
+  // Long-press your own message to delete (unsend) it for everyone.
+  const askDelete = (m: any) => Alert.alert('Delete message?', 'It will be removed for everyone in this chat.', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Delete', style: 'destructive', onPress: () => { update(`${thread.base}/messages/${m.id}`, { deleted: true, message_text: '' }).catch(() => {}); } },
+  ]);
+
+  const call = () => startCall(groupForStudent
     ? { calleeType: 'staff', calleeUid: '', conversationId: uid, memberId: user.member_id || '', name: 'JPCS Officers' }
-    : { calleeType: 'student', calleeUid: convoId, conversationId: convoId, memberId: memberId || '', name: title || 'Student' });
+    : { calleeType: thread.kind === 'dm' ? 'user' : 'student', calleeUid: thread.peerUid || '', conversationId: thread.id, memberId: thread.memberId || '', name: thread.title || 'User' });
 
   return (
     <View style={s.page}>
       <Header
-        title={title} subtitle={status} online={online} onBack={onBack}
-        avatar={<Avatar uid={isStudent ? undefined : convoId} name={title} size={38} />}
-        right={(
-          <>
-            <IconButton name="videocam" onPress={call} label="Video call" />
-            {onMenu && <IconButton name="person-circle-outline" onPress={onMenu} label="Account" />}
-          </>
-        )}
+        title={thread.title} subtitle={status} online={online} onBack={onBack}
+        avatar={groupForStudent
+          ? <View style={s.groupIcon}><Ionicons name="people" size={20} color={colors.navy} /></View>
+          : <Avatar uid={thread.peerUid} name={thread.title} size={38} />}
+        right={<IconButton name="videocam" onPress={call} label="Video call" />}
       />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <FlatList
@@ -119,15 +122,18 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
               <View style={[s.row, mine ? { justifyContent: 'flex-end' } : null]}>
                 {!mine && (lastOfGroup ? <Avatar uid={m.sender_uid} name={m.sender_name || '?'} size={30} /> : <View style={{ width: 30 }} />)}
                 <View style={{ maxWidth: '78%' }}>
-                  {!mine && firstOfGroup && <Text style={s.name}>{who}</Text>}
-                  <View style={[s.bubble, mine ? s.mine : s.theirs]}>
-                    <Text style={[s.msg, mine && { color: '#fff' }]}>{m.message_text}</Text>
+                  {!mine && firstOfGroup && thread.kind === 'student' && <Text style={s.name}>{who}</Text>}
+                  <Pressable onLongPress={mine && !m.deleted ? () => askDelete(m) : undefined} delayLongPress={350}
+                    style={[s.bubble, mine ? s.mine : s.theirs, m.deleted && s.deleted]}>
+                    <Text style={[s.msg, mine && !m.deleted && { color: '#fff' }, m.deleted && s.deletedText]}>
+                      {m.deleted ? (mine ? 'You unsent a message' : 'Message deleted') : m.message_text}
+                    </Text>
                     {(lastOfGroup || mine) && (
-                      <Text style={[s.meta, mine && { color: '#dbe7ff' }]}>
-                        {fmtTime(m.date_sent)}{mine ? ` · ${m.status === 'read' ? 'Seen' : 'Sent'}` : ''}
+                      <Text style={[s.meta, mine && !m.deleted && { color: '#dbe7ff' }]}>
+                        {fmtTime(m.date_sent)}{mine && !m.deleted ? ` · ${m.status === 'read' ? 'Seen' : 'Sent'}` : ''}
                       </Text>
                     )}
-                  </View>
+                  </Pressable>
                 </View>
               </View>
             );
@@ -135,8 +141,11 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
         />
         {messages && messages.length === 0 && (
           <View style={s.emptyWrap} pointerEvents="none">
-            <Text style={s.empty}>{isStudent ? 'Ask the JPCS Officers about membership, events or other concerns.' : 'No messages yet. Say hello!'}</Text>
+            <Text style={s.empty}>{groupForStudent ? 'Ask the JPCS Officers about membership, events or other concerns.' : 'No messages yet. Say hello!'}</Text>
           </View>
+        )}
+        {!!messages?.some((m) => m.sender_uid === uid && !m.deleted) && (
+          <Text style={s.hint}>Tip: press and hold your message to delete it.</Text>
         )}
         <View style={[s.inputRow, { paddingBottom: aboveTabs ? 10 : Math.max(insets.bottom, 10) }]}>
           <TextInput
@@ -156,11 +165,15 @@ const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#f8fafd' },
   emptyWrap: { position: 'absolute', top: 30, left: 0, right: 0 },
   empty: { textAlign: 'center', color: colors.muted, paddingHorizontal: 30 },
+  hint: { textAlign: 'center', color: '#a0a8b8', fontSize: 11, paddingBottom: 4 },
+  groupIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.blueSoft, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 7, marginTop: 4 },
   name: { fontSize: 11.5, fontWeight: '700', color: '#4c5568', marginBottom: 3, marginLeft: 4 },
   bubble: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 18, borderWidth: 1 },
   mine: { backgroundColor: '#1f6feb', borderColor: '#1f6feb', borderBottomRightRadius: 5 },
   theirs: { backgroundColor: '#fff', borderColor: colors.line, borderBottomLeftRadius: 5 },
+  deleted: { backgroundColor: 'transparent', borderColor: '#cfd6e4', borderStyle: 'dashed' },
+  deletedText: { color: colors.muted, fontStyle: 'italic' },
   msg: { fontSize: 15.5, color: colors.text },
   meta: { fontSize: 11, color: colors.muted, marginTop: 5 },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingTop: 10, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: colors.line, gap: 10 },

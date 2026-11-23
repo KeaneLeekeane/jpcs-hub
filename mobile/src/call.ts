@@ -11,7 +11,7 @@ import { turn } from './firebaseConfig';
 export const RING_TIMEOUT_MS = 45000;
 
 export type Me = { uid: string; name: string; role: string };
-export type Target = { calleeType: 'staff' | 'student'; calleeUid: string; conversationId: string; memberId: string; name: string };
+export type Target = { calleeType: 'staff' | 'student' | 'user'; calleeUid: string; conversationId: string; memberId: string; name: string };
 export type CallStatus = 'idle' | 'calling' | 'connecting' | 'connected' | 'ended';
 
 function iceServers() {

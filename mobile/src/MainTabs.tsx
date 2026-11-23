@@ -14,6 +14,7 @@ import { colors } from './theme';
 import { Avatar } from './ui';
 import { Page, Card, T, Btn } from './kit';
 import ChatScreen from './screens/ChatScreen';
+import type { Thread } from './thread';
 import ConversationsScreen from './screens/ConversationsScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import MembersScreen from './screens/MembersScreen';
@@ -25,7 +26,7 @@ import ReportsScreen from './screens/ReportsScreen';
 import MyMembershipScreen from './screens/MyMembershipScreen';
 
 type Icon = keyof typeof Ionicons.glyphMap;
-type Chat = { id: string; name: string; memberId: string };
+
 
 const MODULES: { key: string; title: string; icon: Icon; sub: string }[] = [
   { key: 'members', title: 'Membership Records', icon: 'people-outline', sub: 'Add, edit and search members' },
@@ -111,21 +112,23 @@ function TabBar({ tabs, active, onChange }: { tabs: { key: string; label: string
 export default function MainTabs() {
   const { uid, user, isStudent } = useSession();
   const role = user.role;
-  const [tab, setTab] = useState(isStudent ? 'messages' : 'home');
-  const [chat, setChat] = useState<Chat | null>(null);
+  const [tab, setTab] = useState('home');
+  const [chat, setChat] = useState<Thread | null>(null);
   const [module, setModule] = useState<string | null>(null);
 
   const convos = useCollection(isStudent ? null : 'conversations');
   const [mine, setMine] = useState<Row | null>(null);
   useEffect(() => (isStudent ? subDoc(`conversations/${uid}`, setMine) : undefined), [isStudent, uid]);
-  const unread = isStudent ? (mine?.student_unread || 0) : (convos || []).reduce((n, c) => n + (c.staff_unread || 0), 0);
+  const dms = useCollection('dms', { where: [['members', uid, 'array-contains']] });
+  const unread = (isStudent ? (mine?.student_unread || 0) : (convos || []).reduce((n, c) => n + (c.staff_unread || 0), 0))
+    + (dms || []).reduce((n, d) => n + (d[`unread_${uid}`] || 0), 0);
 
   // Android back button: close the open chat/module first.
   useEffect(() => {
     const h = BackHandler.addEventListener('hardwareBackPress', () => {
       if (chat) { setChat(null); return true; }
       if (module) { setModule(null); return true; }
-      if (tab !== (isStudent ? 'messages' : 'home')) { setTab(isStudent ? 'messages' : 'home'); return true; }
+      if (tab !== 'home') { setTab('home'); return true; }
       return false;
     });
     return () => h.remove();
@@ -133,11 +136,11 @@ export default function MainTabs() {
 
   const tabs = isStudent
     ? [
+      { key: 'home', label: 'Dashboard', icon: 'grid-outline' as Icon },
       { key: 'messages', label: 'Messages', icon: 'chatbubbles-outline' as Icon, badge: unread },
       { key: 'announcements', label: 'News', icon: 'megaphone-outline' as Icon },
       { key: 'events', label: 'Events', icon: 'calendar-outline' as Icon },
-      { key: 'membership', label: 'Membership', icon: 'card-outline' as Icon },
-      { key: 'profile', label: 'Profile', icon: 'person-circle-outline' as Icon },
+      { key: 'profile', label: 'Me', icon: 'person-circle-outline' as Icon },
     ]
     : [
       { key: 'home', label: 'Dashboard', icon: 'grid-outline' as Icon },
@@ -152,15 +155,22 @@ export default function MainTabs() {
 
   let body: ReactNode;
   if (tab === 'messages') {
-    if (isStudent) body = <ChatScreen convoId={uid} title="JPCS Officers" memberId={user.member_id || ''} aboveTabs />;
-    else if (chat) body = <ChatScreen key={chat.id} convoId={chat.id} title={chat.name} memberId={chat.memberId} onBack={() => setChat(null)} />;
-    else body = <ConversationsScreen onOpen={setChat} onMenu={() => changeTab('more')} />;
+    body = chat
+      ? <ChatScreen key={`${chat.kind}:${chat.id}`} thread={chat} onBack={() => setChat(null)} />
+      : <ConversationsScreen onOpen={setChat} />;
   } else if (tab === 'home') {
-    body = <DashboardScreen onOpen={(k) => { setTab('more'); setModule(k); }} />;
+    body = <DashboardScreen onOpen={(k) => {
+      if (isStudent) { setTab(k === 'announcements' ? 'announcements' : k === 'membership' ? 'profile' : 'events'); return; }
+      setTab('more'); setModule(k);
+    }} />;
   } else if (tab === 'membership') {
     body = <MyMembershipScreen />;
   } else if (tab === 'profile') {
-    body = <Page title="Profile"><ProfileCard /><T small muted style={{ textAlign: 'center' }}>JPCS HUB · Pateros Technological College</T></Page>;
+    body = (
+      <View style={{ flex: 1 }}>
+        <MyMembershipScreen footer={<ProfileCard />} />
+      </View>
+    );
   } else if (tab === 'more') {
     body = module ? renderModule(module, () => setModule(null)) : (
       <Page title="More" subtitle="JPCS HUB modules">
@@ -184,7 +194,7 @@ export default function MainTabs() {
   }
 
   // Officers' open chat uses the full screen; everything else shows the tab bar.
-  const hideBar = tab === 'messages' && !isStudent && !!chat;
+  const hideBar = tab === 'messages' && !!chat;
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ flex: 1 }}>{body}</View>

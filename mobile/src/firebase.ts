@@ -37,7 +37,7 @@ export const signOutUser = () => FirebaseAuth.signOut(auth!);
 export const onAuth = (cb: (uid: string | null) => void) =>
   FirebaseAuth.onAuthStateChanged(auth!, (u) => cb(u ? u.uid : null));
 
-type Opts = { where?: [string, any][]; orderBy?: [string, 'asc' | 'desc'] };
+type Opts = { where?: ([string, any] | [string, any, 'array-contains'])[]; orderBy?: [string, 'asc' | 'desc'] };
 
 function sortRows(rows: Row[], opts: Opts) {
   if (!opts.orderBy) return rows;
@@ -47,7 +47,7 @@ function sortRows(rows: Row[], opts: Opts) {
 }
 
 export function sub(path: string, opts: Opts, cb: (rows: Row[]) => void) {
-  const parts = (opts.where || []).map(([f, v]) => where(f, '==', v));
+  const parts = (opts.where || []).map((w) => where(w[0], (w[2] as any) || '==', w[1]));
   const q = parts.length ? query(collection(db!, path), ...parts) : collection(db!, path);
   return onSnapshot(q, (s) => cb(sortRows(s.docs.map((d) => ({ id: d.id, ...d.data() })), opts)),
     (e) => { console.warn('sub', path, e.message); cb([]); });

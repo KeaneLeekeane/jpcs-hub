@@ -1,14 +1,15 @@
+import type React from 'react';
 // Student: their own membership record (read-only).
 import { useSession, useCollection } from '../session';
 import { Page, Card, H, T, Badge, RowLine, Loading, Empty } from '../kit';
 import { fmtDate } from '../helpers';
 
-export default function MyMembershipScreen() {
+export default function MyMembershipScreen({ footer }: { footer?: React.ReactNode }) {
   const { uid, user } = useSession();
   const mine = useCollection('members', { where: [['uid', uid]] });
   const m = mine?.[0];
   return (
-    <Page title="My Membership" subtitle={user.full_name || user.username}>
+    <Page title="Me" subtitle={user.full_name || user.username}>
       {!mine ? <Loading /> : !m ? <Empty text="No membership record is linked to this login yet. Please message the JPCS Officers." /> : (
         <>
           <Card>
@@ -31,6 +32,7 @@ export default function MyMembershipScreen() {
           </Card>
         </>
       )}
+      {footer}
     </Page>
   );
 }
