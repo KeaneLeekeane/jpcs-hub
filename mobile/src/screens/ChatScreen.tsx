@@ -31,6 +31,7 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
   const [text, setText] = useState('');
   const [appActive, setAppActive] = useState(AppState.currentState === 'active');
   const listRef = useRef<FlatList>(null);
+  const [selected, setSelected] = useState<string | null>(null); // message showing the Delete button
 
   useEffect(() => {
     const s = AppState.addEventListener('change', (st) => setAppActive(st === 'active'));
@@ -81,10 +82,16 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  // Long-press your own message to delete (unsend) it for everyone.
+  // Tap (or press and hold) your own message to show Delete; it is removed for everyone.
   const askDelete = (m: any) => Alert.alert('Delete message?', 'It will be removed for everyone in this chat.', [
     { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: () => { update(`${thread.base}/messages/${m.id}`, { deleted: true, message_text: '' }).catch(() => {}); } },
+    {
+      text: 'Delete', style: 'destructive', onPress: () => {
+        setSelected(null);
+        update(`${thread.base}/messages/${m.id}`, { deleted: true, message_text: '' })
+          .catch((e) => Alert.alert('Could not delete', e?.message || 'Please check your internet connection and try again.'));
+      },
+    },
   ]);
 
   const call = () => startCall(groupForStudent
@@ -123,8 +130,10 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
                 {!mine && (lastOfGroup ? <Avatar uid={m.sender_uid} name={m.sender_name || '?'} size={30} /> : <View style={{ width: 30 }} />)}
                 <View style={{ maxWidth: '78%' }}>
                   {!mine && firstOfGroup && thread.kind === 'student' && <Text style={s.name}>{who}</Text>}
-                  <Pressable onLongPress={mine && !m.deleted ? () => askDelete(m) : undefined} delayLongPress={350}
-                    style={[s.bubble, mine ? s.mine : s.theirs, m.deleted && s.deleted]}>
+                  <Pressable
+                    onPress={mine && !m.deleted ? () => setSelected(selected === m.id ? null : m.id) : undefined}
+                    onLongPress={mine && !m.deleted ? () => askDelete(m) : undefined} delayLongPress={400}
+                    style={[s.bubble, mine ? s.mine : s.theirs, m.deleted && s.deleted, selected === m.id && { opacity: 0.85 }]}>
                     <Text style={[s.msg, mine && !m.deleted && { color: '#fff' }, m.deleted && s.deletedText]}>
                       {m.deleted ? (mine ? 'You unsent a message' : 'Message deleted') : m.message_text}
                     </Text>
@@ -134,6 +143,12 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
                       </Text>
                     )}
                   </Pressable>
+                  {selected === m.id && (
+                    <Pressable onPress={() => askDelete(m)} style={s.delBtn} accessibilityLabel="Delete message">
+                      <Ionicons name="trash-outline" size={15} color="#c53030" />
+                      <Text style={{ color: '#c53030', fontWeight: '700', marginLeft: 5 }}>Delete</Text>
+                    </Pressable>
+                  )}
                 </View>
               </View>
             );
@@ -145,7 +160,7 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: Props) {
           </View>
         )}
         {!!messages?.some((m) => m.sender_uid === uid && !m.deleted) && (
-          <Text style={s.hint}>Tip: press and hold your message to delete it.</Text>
+          <Text style={s.hint}>Tip: tap your message to delete it.</Text>
         )}
         <View style={[s.inputRow, { paddingBottom: aboveTabs ? 10 : Math.max(insets.bottom, 10) }]}>
           <TextInput
@@ -172,6 +187,7 @@ const s = StyleSheet.create({
   bubble: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 18, borderWidth: 1 },
   mine: { backgroundColor: '#1f6feb', borderColor: '#1f6feb', borderBottomRightRadius: 5 },
   theirs: { backgroundColor: '#fff', borderColor: colors.line, borderBottomLeftRadius: 5 },
+  delBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', backgroundColor: '#fde8e8', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6, marginTop: 4 },
   deleted: { backgroundColor: 'transparent', borderColor: '#cfd6e4', borderStyle: 'dashed' },
   deletedText: { color: colors.muted, fontStyle: 'italic' },
   msg: { fontSize: 15.5, color: colors.text },
