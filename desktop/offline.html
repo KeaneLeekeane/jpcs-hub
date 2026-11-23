@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>JPCS HUB</title>
+  <style>
+    body { margin: 0; height: 100vh; display: grid; place-items: center; background: #17295a; color: #fff;
+           font-family: 'Segoe UI', system-ui, sans-serif; text-align: center; }
+    .logo { width: 64px; height: 64px; border-radius: 14px; background: #2d6ae0; display: grid; place-items: center;
+            font-weight: 800; font-size: 22px; margin: 0 auto 18px; }
+    p { color: #c9d4ef; max-width: 360px; }
+    button { margin-top: 12px; background: #fff; color: #17295a; border: 0; border-radius: 8px; padding: 11px 22px;
+             font-weight: 700; font-size: 15px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div>
+    <div class="logo">JH</div>
+    <h2>No internet connection</h2>
+    <p>JPCS HUB needs internet to load your records, messages and calls. Check your Wi-Fi and try again.</p>
+    <button onclick="location.href = new URLSearchParams(location.search).get('url')">Retry</button>
+  </div>
+</body>
+</html>

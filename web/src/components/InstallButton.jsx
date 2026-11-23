@@ -20,7 +20,7 @@ export default function InstallButton({ className = 'btn light', style }) {
     listeners.add(l);
     return () => listeners.delete(l);
   }, []);
-  if (!deferred) return null;
+  if (!deferred || window.jpcsDesktop) return null;
   return (
     <button
       type="button"

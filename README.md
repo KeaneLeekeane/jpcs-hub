@@ -92,7 +92,9 @@ firebase deploy --only hosting   # publish to https://jpcs-hub-e1240.web.app
 
 Every push to `main` also publishes the portal to **GitHub Pages** (workflow *Publish web portal to GitHub Pages*).
 
-**Laptop app:** open the portal in Chrome or Edge and click **Install app** (on the login page, or the install icon in the address bar). JPCS HUB then opens in its own window with a desktop/Start-menu icon. On phones, *Add to Home screen* does the same (handy for iPhone users).
+**Windows app (.exe):** download `JPCS-HUB-Setup-x.y.z.exe` from the repository's **Releases** page (built by the *Build Windows app (.exe)* workflow from `desktop/`). It opens the live portal in its own window, with a desktop and Start-menu shortcut. Windows SmartScreen may warn because it is not code-signed: click *More info → Run anyway*.
+
+**Laptop app (browser install):** open the portal in Chrome or Edge and click **Install app** (on the login page, or the install icon in the address bar). JPCS HUB then opens in its own window with a desktop/Start-menu icon. On phones, *Add to Home screen* does the same (handy for iPhone users).
 
 **Demo mode:** run with `VITE_DEMO=1 npm run dev` (or with no API key) and the portal runs with sample data saved in the browser, so every screen can be tried right away. Demo logins: `admin/admin123`, `officer/officer123`, `treasurer/treasurer123`, `auditor/auditor123`, student `2026-001/student123`. Open two browser tabs (officer + student) to try the messenger and video call.
 
@@ -120,6 +122,7 @@ web/                 React web portal
   src/pages/         Dashboard, Members, Accounts, Announcements, Events,
                      Documents, Finance, Reports, Messenger, Login, Setup
   src/data/          Firebase + demo backends, WebRTC call logic
+desktop/             Windows app (Electron) that opens the live portal
 mobile/              Expo React Native app
   src/screens/       Login, Conversations (officers), Chat
   src/CallLayer.tsx  Incoming call and video call screens

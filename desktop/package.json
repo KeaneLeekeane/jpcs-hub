@@ -1,0 +1,45 @@
+{
+  "name": "jpcs-hub-desktop",
+  "productName": "JPCS HUB",
+  "version": "1.0.0",
+  "description": "JPCS HUB desktop app for Windows (JPCS-PTC portal, messenger and video call)",
+  "author": "JPCS-PTC",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "build": {
+    "appId": "com.jpcsptc.jpcshub.desktop",
+    "productName": "JPCS HUB",
+    "artifactName": "JPCS-HUB-Setup-${version}.${ext}",
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline.html",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "JPCS HUB",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  }
+}
