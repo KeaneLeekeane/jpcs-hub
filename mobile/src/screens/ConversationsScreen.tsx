@@ -69,11 +69,11 @@ export default function ConversationsScreen({ onOpen, onMenu }: { onOpen: Open; 
           const on = isOnline(pres(c.id));
           const unread = c.staff_unread > 0;
           return (
-            <Pressable style={s.row} onPress={() => onOpen({ id: c.id, name: c.student_name, memberId: c.member_id || '' })}>
-              <Avatar name={c.student_name} online={on} />
+            <Pressable style={s.row} onPress={() => onOpen({ id: c.id, name: c.student_name || 'Student', memberId: c.member_id || '' })}>
+              <Avatar name={c.student_name || 'Student'} online={on} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[s.name, { flex: 1 }]} numberOfLines={1}>{c.student_name}</Text>
+                  <Text style={[s.name, { flex: 1 }]} numberOfLines={1}>{c.student_name || 'Student'}</Text>
                   <Text style={s.time}>{fmtWhen(c.last_time)}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>

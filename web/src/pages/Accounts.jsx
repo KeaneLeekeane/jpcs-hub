@@ -48,6 +48,7 @@ function AccountForm({ account, onClose }) {
           <input className="input" value={form.username} onChange={set('username')} required disabled={!isNew} />
         </Field>
         <Field label="E-mail (optional)"><input className="input" type="email" value={form.email} onChange={set('email')} /></Field>
+        {account.role === 'student' && <Field label="Role"><input className="input" value="Student" disabled /></Field>}
         {account.role !== 'student' && (
           <Field label="Role">
             <select className="input" value={form.role} onChange={set('role')}>
@@ -76,7 +77,7 @@ export default function Accounts() {
   const presence = useCollection('presence');
   const online = (id) => isOnline((presence || []).find((p) => p.id === id));
   const [editing, setEditing] = useState(null);
-  const [filter, setFilter] = useState('staff');
+  const [filter, setFilter] = useState('all');
 
   const rows = (users || []).filter((u) => (filter === 'all' ? true : filter === 'staff' ? u.role !== 'student' : u.role === 'student'));
   const toggle = (u) => api.update(`users/${u.id}`, { status: u.status === 'inactive' ? 'active' : 'inactive' });

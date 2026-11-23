@@ -47,6 +47,7 @@ function ChatPane({ convoId, title, peerOnline, peerStatus, onCall, mySide, memb
       [mySide === 'student' ? 'staff_unread' : 'student_unread']: api.inc(1),
     };
     if (mySide === 'student') Object.assign(convo, { student_uid: uid, student_name: name, member_id: user.member_id || '' });
+    else Object.assign(convo, { student_uid: convoId, student_name: title || 'Student', member_id: member?.member_id || '' });
     await api.set(`conversations/${convoId}`, convo, { merge: true });
   };
 
@@ -130,9 +131,9 @@ function StaffMessenger() {
             const p = pres(c.id);
             return (
               <button key={c.id} className={`convo${c.id === active ? ' active' : ''}`} onClick={() => setActive(c.id)}>
-                <div className="avatar">{initials(c.student_name)}<span className={`dot${isOnline(p) ? ' on' : ''}`} /></div>
+                <div className="avatar">{initials(c.student_name || 'Student')}<span className={`dot${isOnline(p) ? ' on' : ''}`} /></div>
                 <div style={{ minWidth: 0 }}>
-                  <div className="convo-name">{c.student_name}</div>
+                  <div className="convo-name">{c.student_name || 'Student'}</div>
                   <div className="convo-sub">{isOnline(p) ? 'Active now' : c.last_message || 'New conversation'}</div>
                 </div>
                 {c.staff_unread > 0 && <span className="unread">{c.staff_unread}</span>}
@@ -144,12 +145,12 @@ function StaffMessenger() {
           <ChatPane
             key={current.id}
             convoId={current.id}
-            title={current.student_name}
+            title={current.student_name || 'Student'}
             member={current}
             mySide="officer"
             peerOnline={isOnline(pres(current.id))}
             peerStatus={lastSeen(pres(current.id))}
-            onCall={() => startCall({ calleeType: 'student', calleeUid: current.id, conversationId: current.id, memberId: current.member_id, name: current.student_name })}
+            onCall={() => startCall({ calleeType: 'student', calleeUid: current.id, conversationId: current.id, memberId: current.member_id || '', name: current.student_name || 'Student' })}
           />
         ) : <div className="card empty">Select a conversation.</div>}
       </div>

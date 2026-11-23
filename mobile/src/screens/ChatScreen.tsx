@@ -77,13 +77,14 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
       [isStudent ? 'staff_unread' : 'student_unread']: inc(1),
     };
     if (isStudent) Object.assign(convo, { student_uid: uid, student_name: name, member_id: user.member_id || '' });
+    else Object.assign(convo, { student_uid: convoId, student_name: title || 'Student', member_id: memberId || '' });
     await set(`conversations/${convoId}`, convo, true);
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
   const call = () => startCall(isStudent
     ? { calleeType: 'staff', calleeUid: '', conversationId: uid, memberId: user.member_id || '', name: 'JPCS Officers' }
-    : { calleeType: 'student', calleeUid: convoId, conversationId: convoId, memberId, name: title });
+    : { calleeType: 'student', calleeUid: convoId, conversationId: convoId, memberId: memberId || '', name: title || 'Student' });
 
   return (
     <View style={s.page}>

@@ -62,7 +62,7 @@ export default function AccountsScreen({ onBack }: { onBack?: () => void }) {
   const { uid, user } = useSession();
   const users = useCollection('users', { orderBy: ['date_created', 'asc'] });
   const presence = useCollection('presence');
-  const [filter, setFilter] = useState('staff');
+  const [filter, setFilter] = useState('all');
   const [editing, setEditing] = useState<Row | null | undefined>(undefined);
   if (user.role !== 'admin') return <Page title="User Accounts" onBack={onBack}><Empty text="Only the Admin can manage user accounts." /></Page>;
 
