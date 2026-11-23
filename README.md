@@ -47,7 +47,14 @@ Follows the ERD in the capstone document:
 
 Also `presence/{uid}` (active status) and `settings/bootstrap` (first-time setup).
 
-## 1. Firebase setup (one time)
+## Live setup
+
+- Firebase project: **JPCS HUB** (`jpcs-hub-e1240`), Spark (free) plan, region `asia-southeast1` (Singapore)
+- Authentication: Email/Password enabled · Firestore: created, `firestore.rules` published
+- The Firebase config is already filled in `web/src/firebaseConfig.js` and `mobile/src/firebaseConfig.ts`
+- **First step:** open the web portal → *Create the admin account* (only works once)
+
+## 1. Firebase setup (reference — already done for jpcs-hub-e1240)
 
 1. In the [Firebase console](https://console.firebase.google.com), create a project (e.g. `jpcs-hub`).
 2. **Authentication** → Get started → enable **Email/Password**.
@@ -80,10 +87,12 @@ cd web
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # production files in web/dist
-firebase deploy --only hosting   # publish to https://<project-id>.web.app
+firebase deploy --only hosting   # publish to https://jpcs-hub-e1240.web.app
 ```
 
-**Demo mode:** while `web/src/firebaseConfig.js` has no API key, the portal runs with sample data saved in the browser, so every screen can be tried right away. Demo logins: `admin/admin123`, `officer/officer123`, `treasurer/treasurer123`, `auditor/auditor123`, student `2026-001/student123`. Open two browser tabs (officer + student) to try the messenger and video call.
+Every push to `main` also publishes the portal to **GitHub Pages** (workflow *Publish web portal to GitHub Pages*).
+
+**Demo mode:** run with `VITE_DEMO=1 npm run dev` (or with no API key) and the portal runs with sample data saved in the browser, so every screen can be tried right away. Demo logins: `admin/admin123`, `officer/officer123`, `treasurer/treasurer123`, `auditor/auditor123`, student `2026-001/student123`. Open two browser tabs (officer + student) to try the messenger and video call.
 
 ## 3. Run and build the mobile app
 
