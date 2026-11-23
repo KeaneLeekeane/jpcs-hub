@@ -51,7 +51,11 @@ export default function Layout({ children, demo }) {
   const role = user.role;
   const staff = role !== 'student';
   const convos = useCollection(staff ? 'conversations' : null);
-  const unread = (convos || []).reduce((n, c) => n + (c.staff_unread || 0), 0);
+  const dms = useCollection('dms', { where: [['members', uid, 'array-contains']] });
+  const mine = useCollection(staff ? null : 'conversations', { where: [['student_uid', uid]] });
+  const unread = (convos || []).reduce((n, c) => n + (c.staff_unread || 0), 0)
+    + (dms || []).reduce((n, d) => n + (d[`unread_${uid}`] || 0), 0)
+    + (mine || []).reduce((n, c) => n + (c.student_unread || 0), 0);
 
   return (
     <div className="app">

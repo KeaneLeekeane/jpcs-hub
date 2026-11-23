@@ -17,7 +17,7 @@ export const isStaff = (role) => ['admin', 'officer', 'treasurer', 'auditor'].in
 
 // Which sidebar pages each role can open.
 export const ACCESS = {
-  dashboard: ['admin', 'officer', 'treasurer', 'auditor'],
+  dashboard: ['admin', 'officer', 'treasurer', 'auditor', 'student'],
   members: ['admin', 'officer'],
   accounts: ['admin'],
   announcements: ['admin', 'officer', 'treasurer', 'auditor', 'student'],

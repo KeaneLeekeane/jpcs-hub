@@ -63,7 +63,7 @@ function coll(path) { return state.db[path] || {}; }
 
 function query(path, opts = {}) {
   let rows = Object.entries(coll(path)).map(([id, d]) => ({ id, ...d }));
-  for (const [f, v] of opts.where || []) rows = rows.filter((r) => r[f] === v);
+  for (const [f, v, op] of opts.where || []) rows = rows.filter((r) => (op === 'array-contains' ? (r[f] || []).includes(v) : r[f] === v));
   if (opts.orderBy) {
     const [field, dir = 'asc'] = opts.orderBy;
     const m = dir === 'desc' ? -1 : 1;

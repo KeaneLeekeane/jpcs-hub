@@ -19,7 +19,7 @@ const db = app ? getFirestore(app) : null;
 const toRow = (snap) => (snap.exists() ? { id: snap.id, ...snap.data() } : null);
 
 function buildQuery(path, opts = {}) {
-  const parts = (opts.where || []).map(([f, v]) => where(f, '==', v));
+  const parts = (opts.where || []).map(([f, v, op]) => where(f, op || '==', v));
   return parts.length ? query(collection(db, path), ...parts) : collection(db, path);
 }
 
