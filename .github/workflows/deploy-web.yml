@@ -1,0 +1,44 @@
+name: Deploy web portal to Firebase Hosting
+
+# Runs only after you add the repository secret FIREBASE_SERVICE_ACCOUNT
+# (Firebase console > Project settings > Service accounts > Generate new private key,
+# then GitHub repo > Settings > Secrets and variables > Actions > New repository secret).
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', 'firestore.rules', 'firebase.json', '.github/workflows/deploy-web.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.HAS_SECRET == 'true'
+
+      - uses: actions/setup-node@v4
+        if: env.HAS_SECRET == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build web portal
+        if: env.HAS_SECRET == 'true'
+        working-directory: web
+        run: npm ci && npm run build
+
+      - name: Deploy hosting and Firestore rules
+        if: env.HAS_SECRET == 'true'
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx --yes firebase-tools@latest deploy --only hosting,firestore --non-interactive
+
+      - name: Skipped
+        if: env.HAS_SECRET != 'true'
+        run: echo "Add the FIREBASE_SERVICE_ACCOUNT secret to enable automatic web deploys."

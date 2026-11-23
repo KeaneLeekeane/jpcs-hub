@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// JPCS HUB access rules.
+// Roles live in users/{uid}.role: admin | officer | treasurer | auditor | student
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function active() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && me().status != 'inactive'; }
+    function role() { return me().role; }
+    function isAdmin() { return active() && role() == 'admin'; }
+    function isStaff() { return active() && role() in ['admin', 'officer', 'treasurer', 'auditor']; }
+    function isManager() { return active() && role() in ['admin', 'officer']; }
+    function isTreasurer() { return active() && role() in ['admin', 'treasurer']; }
+    function isAuditor() { return active() && role() in ['admin', 'auditor']; }
+    function onlyChanges(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
+
+    // One-time setup: the first admin creates this together with its user record.
+    match /settings/bootstrap {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.admin_uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // USER_ACCOUNT
+    match /users/{uid} {
+      allow read: if active();
+      // First admin (only while setup has not been done) ...
+      allow create: if (signedIn() && request.auth.uid == uid
+                        && request.resource.data.role == 'admin'
+                        && !exists(/databases/$(database)/documents/settings/bootstrap)
+                        && existsAfter(/databases/$(database)/documents/settings/bootstrap))
+                    // ... staff accounts by the admin, student logins by admin/officers.
+                    || isAdmin()
+                    || (isManager() && request.resource.data.role == 'student');
+      allow update: if isAdmin()
+                    || (isManager() && resource.data.role == 'student' && request.resource.data.role == 'student');
+      allow delete: if isAdmin();
+    }
+
+    // Online status ("Active now")
+    match /presence/{uid} {
+      allow read: if active();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // MEMBER
+    match /members/{id} {
+      allow read: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isManager();
+    }
+
+    // ANNOUNCEMENT and EVENT
+    match /announcements/{id} {
+      allow read: if active();
+      allow write: if isManager();
+    }
+    match /events/{id} {
+      allow read: if active();
+      allow write: if isManager();
+    }
+
+    // DOCUMENT
+    match /documents/{id} {
+      allow read: if isStaff();
+      allow write: if isManager();
+    }
+
+    // LIQUIDATION (one per event, id = event id)
+    match /liquidations/{id} {
+      allow read: if isStaff();
+      allow create: if isTreasurer();
+      // Treasurer edits while Draft/Returned and submits; Auditor approves/returns.
+      allow update: if (isTreasurer() && resource.data.status in ['Draft', 'Returned'])
+                    || (isTreasurer() && onlyChanges(['total_amount']))
+                    || (isAuditor() && resource.data.status == 'For Review'
+                        && onlyChanges(['status', 'remarks', 'verified_by', 'verified_by_name', 'date_verified'])
+                        && request.resource.data.status in ['Approved', 'Returned']);
+      allow delete: if isAdmin();
+    }
+
+    // EXPENSE_ITEM
+    match /expense_items/{id} {
+      allow read: if isStaff();
+      allow create, delete: if isTreasurer();
+      allow update: if isTreasurer();
+    }
+
+    // MESSAGE: conversations/{studentUid}/messages/{id}
+    match /conversations/{studentUid} {
+      allow read, write: if isStaff() || (active() && request.auth.uid == studentUid);
+      match /messages/{msgId} {
+        allow read: if isStaff() || (active() && request.auth.uid == studentUid);
+        allow create: if (isStaff() && request.resource.data.sender_type == 'officer')
+                      || (active() && request.auth.uid == studentUid
+                          && request.resource.data.sender_type == 'student'
+                          && request.resource.data.sender_uid == request.auth.uid);
+        // Only the read indicator can change afterwards.
+        allow update: if (isStaff() || (active() && request.auth.uid == studentUid)) && onlyChanges(['status']);
+        allow delete: if isAdmin();
+      }
+    }
+
+    // CALL_SESSION (+ WebRTC ICE candidates)
+    match /calls/{callId} {
+      function party() {
+        return isStaff()
+          || (active() && (resource.data.caller_uid == request.auth.uid || resource.data.callee_uid == request.auth.uid));
+      }
+      allow read: if party();
+      allow create: if active() && request.resource.data.caller_uid == request.auth.uid;
+      allow update: if party();
+      allow delete: if isAdmin();
+      match /{side}/{candId} {
+        allow read, write: if active();
+      }
+    }
+  }
+}

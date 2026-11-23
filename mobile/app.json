@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "JPCS HUB",
+    "slug": "jpcs-hub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "jpcshub",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#17295a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jpcsptc.jpcshub",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio", "voip"]
+      }
+    },
+    "android": {
+      "package": "com.jpcsptc.jpcshub",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#17295A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "JPCS HUB uses the camera for video calls with JPCS officers.",
+          "microphonePermission": "JPCS HUB uses the microphone for video calls with JPCS officers."
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}

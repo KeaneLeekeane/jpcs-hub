@@ -1,0 +1,16 @@
+rules_version = '2';
+
+// Only used if you keep uploads on Firebase Storage (Blaze plan) instead of Cloudinary.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function staffRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+    match /{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && staffRole() in ['admin', 'officer', 'treasurer']
+                   && request.resource.size < 10 * 1024 * 1024;
+    }
+  }
+}
