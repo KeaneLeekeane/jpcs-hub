@@ -4,6 +4,7 @@ import { api, can, isStaff } from './data/api';
 import { SessionContext, useSession } from './data/hooks';
 import Layout from './components/Layout';
 import { CallProvider } from './components/Calls';
+import { ProfilesProvider } from './components/Avatar';
 import Login from './pages/Login';
 import Setup from './pages/Setup';
 import Dashboard from './pages/Dashboard';
@@ -89,6 +90,7 @@ export default function App() {
 
   return (
     <SessionContext.Provider value={session}>
+      <ProfilesProvider>
       <HashRouter>
         <CallProvider>
           <Layout demo={api.isDemo}>
@@ -107,6 +109,7 @@ export default function App() {
           </Layout>
         </CallProvider>
       </HashRouter>
+      </ProfilesProvider>
     </SessionContext.Provider>
   );
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { usePhoto } from './session';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from './theme';
@@ -7,17 +8,20 @@ import { colors } from './theme';
 export const initials = (name = '') =>
   name.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase() || '?';
 
-export function Avatar({ name, online, size = 42 }: { name: string; online?: boolean; size?: number }) {
+export function Avatar({ name, online, size = 42, uid }: { name: string; online?: boolean; size?: number; uid?: string }) {
+  const photo = usePhoto(uid);
   return (
     <View style={[s.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[s.avatarText, { fontSize: size * 0.36 }]}>{initials(name)}</Text>
+      {photo
+        ? <Image source={{ uri: photo }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+        : <Text style={[s.avatarText, { fontSize: size * 0.36 }]}>{initials(name)}</Text>}
       {online !== undefined && <View style={[s.dot, { backgroundColor: online ? colors.green : '#b8c0cf' }]} />}
     </View>
   );
 }
 
-export function Header({ title, subtitle, onBack, right, online }: {
-  title: string; subtitle?: string; onBack?: () => void; right?: ReactNode; online?: boolean;
+export function Header({ title, subtitle, onBack, right, online, avatar }: {
+  title: string; subtitle?: string; onBack?: () => void; right?: ReactNode; online?: boolean; avatar?: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   return (
@@ -27,6 +31,7 @@ export function Header({ title, subtitle, onBack, right, online }: {
           <Ionicons name="chevron-back" size={26} color="#fff" />
         </Pressable>
       )}
+      {avatar && <View style={{ marginRight: 10 }}>{avatar}</View>}
       <View style={{ flex: 1 }}>
         <Text style={s.title} numberOfLines={1}>{title}</Text>
         {!!subtitle && (

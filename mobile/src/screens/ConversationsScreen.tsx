@@ -31,7 +31,7 @@ function NewMessage({ visible, onClose, onPick }: { visible: boolean; onClose: (
         ListEmptyComponent={<Text style={s.empty}>{students ? 'No students with an app login.' : 'Loading…'}</Text>}
         renderItem={({ item }) => (
           <Pressable style={s.row} onPress={() => { onPick({ id: item.id, name: item.full_name, memberId: item.member_id || '' }); onClose(); }}>
-            <Avatar name={item.full_name} />
+            <Avatar uid={item.id} name={item.full_name} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={s.name}>{item.full_name}</Text>
               <Text style={s.preview}>{item.username}</Text>
@@ -70,7 +70,7 @@ export default function ConversationsScreen({ onOpen, onMenu }: { onOpen: Open; 
           const unread = c.staff_unread > 0;
           return (
             <Pressable style={s.row} onPress={() => onOpen({ id: c.id, name: c.student_name || 'Student', memberId: c.member_id || '' })}>
-              <Avatar name={c.student_name || 'Student'} online={on} />
+              <Avatar uid={c.id} name={c.student_name || 'Student'} online={on} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={[s.name, { flex: 1 }]} numberOfLines={1}>{c.student_name || 'Student'}</Text>

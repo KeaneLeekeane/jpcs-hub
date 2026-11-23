@@ -32,12 +32,13 @@ export function CallLayer({ children }: { children: ReactNode }) {
   const sessionRef = useRef<CallSession | null>(null);
   sessionRef.current = session;
 
-  const ringing = useCollection('calls', isStudent
-    ? { where: [['callee_uid', uid], ['status', 'ringing']] }
-    : { where: [['callee_type', 'staff'], ['status', 'ringing']] });
+  // Calls addressed to me directly (any role) + calls students make to "JPCS Officers".
+  const direct = useCollection('calls', { where: [['callee_uid', uid], ['status', 'ringing']] });
+  const toStaff = useCollection(isStudent ? null : 'calls', { where: [['callee_type', 'staff'], ['status', 'ringing']] });
+  const ringing = [...(direct || []), ...(toStaff || [])];
   const busy = !!session && session.status !== 'ended';
-  const incoming = (ringing || []).find((c) => c.caller_uid !== uid && !dismissed.has(c.id)
-    && Date.now() - (c.created_at || 0) < RING_TIMEOUT_MS && !busy);
+  const incoming = ringing.find((c) => c.caller_uid !== uid && !dismissed.has(c.id)
+    && Math.abs(Date.now() - (c.created_at || 0)) < RING_TIMEOUT_MS + 60000 && !busy);
 
   useEffect(() => {
     if (!incoming) return undefined;
@@ -75,7 +76,7 @@ export function CallLayer({ children }: { children: ReactNode }) {
         <View style={s.incomingBack}>
           {incoming && (
             <View style={s.incomingCard}>
-              <Avatar name={incoming.caller_name} size={78} />
+              <Avatar uid={incoming.caller_uid} name={incoming.caller_name} size={96} />
               <Text style={s.incomingName}>{incoming.caller_name}</Text>
               <Text style={s.incomingSub}>Incoming video call · JPCS HUB</Text>
               <View style={s.incomingBtns}>

@@ -2,11 +2,13 @@
 // as the web portal; User Accounts is Admin-only). Students get Messenger,
 // Announcements, Events and My Membership.
 import { useEffect, useState, type ReactNode } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useCollection, useSession } from './session';
-import { subDoc, type Row } from './firebase';
+import { useCollection, useSession, usePhoto } from './session';
+import { set, subDoc, type Row } from './firebase';
 import { can, ROLES } from './helpers';
 import { colors } from './theme';
 import { Avatar } from './ui';
@@ -35,11 +37,37 @@ const MODULES: { key: string; title: string; icon: Icon; sub: string }[] = [
   { key: 'reports', title: 'Reports', icon: 'bar-chart-outline', sub: 'Membership and financial summary' },
 ];
 
+async function choosePhoto(uid: string, camera: boolean) {
+  const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) throw new Error('Permission is needed to choose a picture.');
+  const opts = { mediaTypes: ['images'] as ImagePicker.MediaType[], allowsEditing: true, aspect: [1, 1] as [number, number], quality: 0.9 };
+  const res = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
+  if (res.canceled || !res.assets?.[0]) return;
+  const out = await manipulateAsync(res.assets[0].uri, [{ resize: { width: 256, height: 256 } }], { compress: 0.75, format: SaveFormat.JPEG, base64: true });
+  await set(`profiles/${uid}`, { photo: `data:image/jpeg;base64,${out.base64}`, updated: Date.now() });
+}
+
 function ProfileCard() {
-  const { user, signOut } = useSession();
+  const { uid, user, signOut } = useSession();
+  const photo = usePhoto(uid);
+  const [busy, setBusy] = useState(false);
+  const change = () => Alert.alert('Profile picture', 'Choose a picture for your profile.', [
+    { text: 'Take Photo', onPress: () => run(true) },
+    { text: 'Choose from Gallery', onPress: () => run(false) },
+    ...(photo ? [{ text: 'Remove Picture', style: 'destructive' as const, onPress: () => { set(`profiles/${uid}`, { photo: '', updated: Date.now() }); } }] : []),
+    { text: 'Cancel', style: 'cancel' as const },
+  ]);
+  const run = async (camera: boolean) => {
+    setBusy(true);
+    try { await choosePhoto(uid, camera); } catch (e: any) { Alert.alert('Could not save picture', e?.message || ''); } finally { setBusy(false); }
+  };
   return (
     <Card style={{ alignItems: 'center' }}>
-      <Avatar name={user.full_name || user.username} size={60} />
+      <Pressable onPress={change} accessibilityLabel="Change profile picture">
+        <Avatar uid={uid} name={user.full_name || user.username} size={84} />
+        <View style={s.camBadge}><Ionicons name="camera" size={15} color="#fff" /></View>
+      </Pressable>
+      <Btn title={busy ? 'Saving…' : photo ? 'Change Picture' : 'Add Profile Picture'} kind="light" icon="image-outline" onPress={change} busy={busy} style={{ marginTop: 10, paddingVertical: 8 }} />
       <T bold style={{ fontSize: 17, marginTop: 10 }}>{user.full_name || user.username}</T>
       <T small muted>{ROLES[user.role] || user.role} · {user.username}</T>
       <Btn title="Log Out" kind="danger" icon="log-out-outline" onPress={signOut} style={{ alignSelf: 'stretch', marginTop: 14 }} />
@@ -171,5 +199,6 @@ const s = StyleSheet.create({
   tabText: { fontSize: 11, color: '#8a93a6', marginTop: 2 },
   badge: { position: 'absolute', top: -4, right: -10, backgroundColor: '#ef4444', borderRadius: 9, minWidth: 18, height: 18, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
   badgeText: { color: '#fff', fontSize: 10.5, fontWeight: '800' },
+  camBadge: { position: 'absolute', right: 0, bottom: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
   modIcon: { width: 42, height: 42, borderRadius: 11, backgroundColor: '#e8efff', alignItems: 'center', justifyContent: 'center' },
 });

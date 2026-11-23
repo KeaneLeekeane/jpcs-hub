@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { add, inc, isOnline, set, update } from '../firebase';
 import { useCollection, useNow, useSession } from '../session';
 import { useCalls } from '../CallLayer';
-import { Header, IconButton } from '../ui';
+import { Avatar, Header, IconButton } from '../ui';
 import { colors } from '../theme';
 
 const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -28,7 +28,6 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
   const { startCall } = useCalls();
   const insets = useSafeAreaInsets();
   const mySide = isStudent ? 'student' : 'officer';
-  const otherSide = isStudent ? 'officer' : 'student';
   const messages = useCollection(`conversations/${convoId}/messages`, { orderBy: ['date_sent', 'desc'] });
   // Presence: a student sees whether any officer is active; an officer sees the student.
   const staffPresence = useCollection(isStudent ? 'presence' : null, { where: [['staff', true]] });
@@ -56,11 +55,11 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
   // Read indicators: mark the other side's messages as read while this chat is open.
   useEffect(() => {
     if (!messages || !appActive) return;
-    const unread = messages.filter((m) => m.sender_type === otherSide && m.status !== 'read');
+    const unread = messages.filter((m) => m.sender_uid !== uid && m.status !== 'read');
     if (!unread.length) return;
     unread.forEach((m) => update(`conversations/${convoId}/messages/${m.id}`, { status: 'read' }).catch(() => {}));
     update(`conversations/${convoId}`, isStudent ? { student_unread: 0 } : { staff_unread: 0 }).catch(() => {});
-  }, [messages, appActive, convoId, otherSide, isStudent]);
+  }, [messages, appActive, convoId, uid, isStudent]);
 
   const send = async () => {
     const body = text.trim();
@@ -90,6 +89,7 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
     <View style={s.page}>
       <Header
         title={title} subtitle={status} online={online} onBack={onBack}
+        avatar={<Avatar uid={isStudent ? undefined : convoId} name={title} size={38} />}
         right={(
           <>
             <IconButton name="videocam" onPress={call} label="Video call" />
@@ -104,17 +104,31 @@ export default function ChatScreen({ convoId, title, memberId, onBack, onMenu, a
           inverted
           data={messages || []}
           keyExtractor={(m) => m.id}
-          contentContainerStyle={{ padding: 14, gap: 10 }}
-          renderItem={({ item: m }) => {
-            const mine = m.sender_type === mySide;
+          contentContainerStyle={{ padding: 12, gap: 4 }}
+          renderItem={({ item: m, index }) => {
+            // Like Messenger: mine on the right (blue), others on the left with photo.
+            // The list is inverted, so index - 1 is the NEXT (newer) message.
+            const list = messages || [];
+            const mine = m.sender_uid === uid;
+            const newer = list[index - 1];
+            const older = list[index + 1];
+            const lastOfGroup = !newer || newer.sender_uid !== m.sender_uid;
+            const firstOfGroup = !older || older.sender_uid !== m.sender_uid;
+            const who = m.sender_type === 'student' ? (m.sender_name || 'Student') : `${m.sender_name || 'Officer'} · Officer`;
             return (
-              <View style={[s.bubble, mine ? s.mine : s.theirs]}>
-                <Text style={s.msg}>{m.message_text}</Text>
-                <Text style={s.meta}>
-                  {m.sender_type === 'student' ? 'Student' : isStudent ? 'Officer' : `Officer${m.sender_name ? ` (${m.sender_name})` : ''}`}
-                  {' · '}{fmtTime(m.date_sent)}
-                  {mine ? ` · ${m.status === 'read' ? 'Read' : 'Sent'}` : ''}
-                </Text>
+              <View style={[s.row, mine ? { justifyContent: 'flex-end' } : null]}>
+                {!mine && (lastOfGroup ? <Avatar uid={m.sender_uid} name={m.sender_name || '?'} size={30} /> : <View style={{ width: 30 }} />)}
+                <View style={{ maxWidth: '78%' }}>
+                  {!mine && firstOfGroup && <Text style={s.name}>{who}</Text>}
+                  <View style={[s.bubble, mine ? s.mine : s.theirs]}>
+                    <Text style={[s.msg, mine && { color: '#fff' }]}>{m.message_text}</Text>
+                    {(lastOfGroup || mine) && (
+                      <Text style={[s.meta, mine && { color: '#dbe7ff' }]}>
+                        {fmtTime(m.date_sent)}{mine ? ` · ${m.status === 'read' ? 'Seen' : 'Sent'}` : ''}
+                      </Text>
+                    )}
+                  </View>
+                </View>
               </View>
             );
           }}
@@ -142,9 +156,11 @@ const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#f8fafd' },
   emptyWrap: { position: 'absolute', top: 30, left: 0, right: 0 },
   empty: { textAlign: 'center', color: colors.muted, paddingHorizontal: 30 },
-  bubble: { maxWidth: '80%', paddingHorizontal: 13, paddingVertical: 10, borderRadius: 14, borderWidth: 1 },
-  mine: { alignSelf: 'flex-end', backgroundColor: colors.bubbleMine, borderColor: '#d7e2fa', borderBottomRightRadius: 4 },
-  theirs: { alignSelf: 'flex-start', backgroundColor: '#fff', borderColor: colors.line, borderBottomLeftRadius: 4 },
+  row: { flexDirection: 'row', alignItems: 'flex-end', gap: 7, marginTop: 4 },
+  name: { fontSize: 11.5, fontWeight: '700', color: '#4c5568', marginBottom: 3, marginLeft: 4 },
+  bubble: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 18, borderWidth: 1 },
+  mine: { backgroundColor: '#1f6feb', borderColor: '#1f6feb', borderBottomRightRadius: 5 },
+  theirs: { backgroundColor: '#fff', borderColor: colors.line, borderBottomLeftRadius: 5 },
   msg: { fontSize: 15.5, color: colors.text },
   meta: { fontSize: 11, color: colors.muted, marginTop: 5 },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingTop: 10, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: colors.line, gap: 10 },

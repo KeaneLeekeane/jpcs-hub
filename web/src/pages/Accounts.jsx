@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { api, authError, ROLES, fmtDate, isOnline } from '../data/api';
 import { useCollection, useNow, useSession } from '../data/hooks';
 import { Modal, PageHead, Field, StatusBadge, Loading } from '../components/ui';
+import { Avatar } from '../components/Avatar';
 
 const STAFF_ROLES = ['admin', 'officer', 'treasurer', 'auditor'];
+const ALL_ROLES = [...STAFF_ROLES, 'student'];
 
 function AccountForm({ account, onClose }) {
+  const { uid } = useSession();
   const isNew = !account.id;
   const [form, setForm] = useState({ full_name: '', username: '', email: '', role: 'officer', ...account });
   const [password, setPassword] = useState('');
@@ -28,7 +31,7 @@ function AccountForm({ account, onClose }) {
         });
       } else {
         const data = { full_name: form.full_name.trim(), email: form.email.trim() };
-        if (account.role !== 'student') data.role = form.role;
+        data.role = form.role;
         await api.update(`users/${account.id}`, data);
       }
       onClose();
@@ -48,14 +51,13 @@ function AccountForm({ account, onClose }) {
           <input className="input" value={form.username} onChange={set('username')} required disabled={!isNew} />
         </Field>
         <Field label="E-mail (optional)"><input className="input" type="email" value={form.email} onChange={set('email')} /></Field>
-        {account.role === 'student' && <Field label="Role"><input className="input" value="Student" disabled /></Field>}
-        {account.role !== 'student' && (
-          <Field label="Role">
-            <select className="input" value={form.role} onChange={set('role')}>
-              {STAFF_ROLES.map((r) => <option key={r} value={r}>{ROLES[r]}</option>)}
-            </select>
-          </Field>
-        )}
+        <Field label="Role">
+          <select className="input" value={form.role} onChange={set('role')} disabled={account.id === uid}>
+            {(isNew ? STAFF_ROLES : ALL_ROLES).map((r) => <option key={r} value={r}>{ROLES[r]}</option>)}
+          </select>
+        </Field>
+        {account.id === uid && <div className="small muted" style={{ marginTop: -8, marginBottom: 12 }}>You can't change your own role.</div>}
+        {isNew && <div className="small muted" style={{ marginTop: -8, marginBottom: 12 }}>Student logins are created in Membership Records.</div>}
         {isNew && (
           <Field label="Temporary Password">
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
@@ -101,7 +103,7 @@ export default function Accounts() {
                 {rows.length === 0 && <tr><td colSpan={7} className="muted">No accounts.</td></tr>}
                 {rows.map((u) => (
                   <tr key={u.id}>
-                    <td>{u.username}</td>
+                    <td><span className="row"><Avatar uid={u.id} name={u.full_name || u.username} size={30} />{u.username}</span></td>
                     <td>{u.full_name}</td>
                     <td>{ROLES[u.role] || u.role}</td>
                     <td><StatusBadge value={u.status} /></td>

@@ -45,6 +45,13 @@ service cloud.firestore {
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
+    // Profile pictures (small JPEG, set by each user for themselves)
+    match /profiles/{uid} {
+      allow read: if active();
+      allow write: if active() && request.auth.uid == uid
+                   && request.resource.data.photo is string && request.resource.data.photo.size() < 300000;
+    }
+
     // MEMBER
     match /members/{id} {
       allow read: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);

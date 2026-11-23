@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Phone } from 'lucide-react';
 import { CallSession, declineCall, RING_TIMEOUT_MS } from '../data/webrtc';
 import { useCollection, useSession } from '../data/hooks';
+import { Avatar } from './Avatar';
 
 const CallContext = createContext(null);
 export const useCalls = () => useContext(CallContext);
@@ -48,16 +49,36 @@ export function CallProvider({ children }) {
 
   // Calls ringing for me: staff get calls addressed to "JPCS Officers";
   // students get calls addressed to them.
-  const ringing = useCollection(
-    'calls',
-    staff ? { where: [['callee_type', 'staff'], ['status', 'ringing']] }
-      : { where: [['callee_uid', uid], ['status', 'ringing']] },
-  );
-  const incoming = (ringing || []).find(
-    (c) => c.caller_uid !== uid && !dismissed.has(c.id) && Date.now() - (c.created_at || 0) < RING_TIMEOUT_MS
+  // Calls ringing for me: calls addressed to me directly (any role), plus,
+  // for officers/staff, calls a student made to "JPCS Officers".
+  const direct = useCollection('calls', { where: [['callee_uid', uid], ['status', 'ringing']] });
+  const toStaff = useCollection(staff ? 'calls' : null, { where: [['callee_type', 'staff'], ['status', 'ringing']] });
+  const incoming = [...(direct || []), ...(toStaff || [])].find(
+    (c) => c.caller_uid !== uid && !dismissed.has(c.id)
+      // tolerate phone/laptop clocks that differ a little
+      && Math.abs(Date.now() - (c.created_at || 0)) < RING_TIMEOUT_MS + 60000
       && (!session || session.status === 'ended'),
   );
   useRingtone(!!incoming);
+
+  // Desktop notification when the window is in the background.
+  useEffect(() => {
+    if (!incoming || document.visibilityState === 'visible' || !('Notification' in window)) return undefined;
+    let n;
+    const show = () => { n = new Notification('Incoming video call', { body: `${incoming.caller_name} is calling you on JPCS HUB`, requireInteraction: true }); n.onclick = () => { window.focus(); n.close(); }; };
+    if (Notification.permission === 'granted') show();
+    return () => n?.close();
+  }, [incoming?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ask once for notification permission so calls can alert in the background.
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      const ask = () => { Notification.requestPermission().catch(() => {}); window.removeEventListener('click', ask); };
+      window.addEventListener('click', ask);
+      return () => window.removeEventListener('click', ask);
+    }
+    return undefined;
+  }, []);
 
   const newSession = () => {
     const s = new CallSession(() => force((n) => n + 1));
@@ -99,16 +120,16 @@ export function CallProvider({ children }) {
     <CallContext.Provider value={{ startCall, inCall: !!active }}>
       {children}
       {incoming && (
-        <div className="incoming" role="alertdialog">
-          <div className="small muted">Incoming video call</div>
-          <h4 style={{ margin: '4px 0 14px' }}>{incoming.caller_name}</h4>
-          <div className="row">
-            <button className="btn green" style={{ flex: 1, background: '#22a45d', color: '#fff' }} onClick={() => accept(incoming)}>
-              <Phone size={16} /> Accept
-            </button>
-            <button className="btn danger" style={{ flex: 1 }} onClick={() => decline(incoming)}>
-              <PhoneOff size={16} /> Decline
-            </button>
+        <div className="ring-back" role="alertdialog" aria-label="Incoming video call">
+          <div className="ring-card">
+            <div className="ring-pulse"><Avatar uid={incoming.caller_uid} name={incoming.caller_name} size={84} /></div>
+            <h3>{incoming.caller_name}</h3>
+            <div className="ring-sub">Incoming video call · JPCS HUB</div>
+            <div className="ring-actions">
+              <button className="round red" onClick={() => decline(incoming)} title="Decline"><PhoneOff /></button>
+              <button className="round green" onClick={() => accept(incoming)} title="Accept"><Phone /></button>
+            </div>
+            <div className="ring-labels"><span>Decline</span><span>Accept</span></div>
           </div>
         </div>
       )}

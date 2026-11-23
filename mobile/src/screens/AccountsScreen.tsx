@@ -5,14 +5,17 @@ import { Alert, View } from 'react-native';
 import { useCollection, useNow, useSession } from '../session';
 import { authError, createAccount, isOnline, set, update, type Row } from '../firebase';
 import { Page, Card, T, Btn, Field, Chips, Badge, Sheet, Empty, Loading, ErrorText } from '../kit';
-import { IconButton } from '../ui';
+import { Avatar, IconButton } from '../ui';
 import { ROLES, fmtDate } from '../helpers';
 import { colors } from '../theme';
 
 const STAFF_ROLES: [string, string][] = [['admin', 'Admin'], ['officer', 'Officer'], ['treasurer', 'Treasurer'], ['auditor', 'Auditor']];
+const ALL_ROLES: [string, string][] = [...STAFF_ROLES, ['student', 'Student']];
 
 function AccountForm({ account, onClose }: { account: Row | null; onClose: () => void }) {
+  const { uid } = useSession();
   const isNew = !account?.id;
+  const self = account?.id === uid;
   const [full, setFull] = useState(account?.full_name || '');
   const [username, setUsername] = useState(account?.username || '');
   const [email, setEmail] = useState(account?.email || '');
@@ -33,7 +36,7 @@ function AccountForm({ account, onClose }: { account: Row | null; onClose: () =>
         await set(`users/${newUid}`, { full_name: full.trim(), username: u, email: email.trim(), role, status: 'active', date_created: Date.now(), last_active: 0 });
       } else {
         const data: Record<string, any> = { full_name: full.trim(), email: email.trim() };
-        if (account!.role !== 'student') data.role = role;
+        if (!self) data.role = role;
         await update(`users/${account!.id}`, data);
       }
       onClose();
@@ -50,7 +53,9 @@ function AccountForm({ account, onClose }: { account: Row | null; onClose: () =>
       <Field label="Full Name" value={full} onChange={setFull} />
       <Field label="Username" value={username} onChange={setUsername} editable={isNew} keyboard="email-address" />
       <Field label="E-mail (optional)" value={email} onChange={setEmail} keyboard="email-address" />
-      {account?.role !== 'student' && <Chips label="Role" options={STAFF_ROLES} value={role} onChange={setRole} />}
+      {self ? <T small muted style={{ marginBottom: 12 }}>Role: {ROLES[role]} (you can't change your own role)</T>
+        : <Chips label="Role" options={isNew ? STAFF_ROLES : ALL_ROLES} value={role} onChange={setRole} />}
+      {isNew && <T small muted style={{ marginBottom: 12 }}>Student logins are created in Membership Records.</T>}
       {isNew && <Field label="Temporary Password" value={password} onChange={setPassword} secure />}
       <Btn title="Save Account" onPress={save} busy={busy} />
     </Sheet>
@@ -81,7 +86,8 @@ export default function AccountsScreen({ onBack }: { onBack?: () => void }) {
       {!users ? <Loading /> : rows.length === 0 ? <Empty text="No accounts." /> : rows.map((u) => (
         <Card key={u.id}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ flex: 1 }}>
+            <Avatar uid={u.id} name={u.full_name || u.username} size={40} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
               <T bold>{u.full_name}</T>
               <T small muted>{u.username} · {ROLES[u.role] || u.role} · since {fmtDate(u.date_created)}</T>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>

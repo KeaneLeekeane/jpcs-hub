@@ -3,7 +3,8 @@ import { Video } from 'lucide-react';
 import { api, isOnline, fmtDateTime, fmtTime } from '../data/api';
 import { useCollection, useNow, useSession } from '../data/hooks';
 import { useCalls } from '../components/Calls';
-import { PageHead, Loading, initials, Modal } from '../components/ui';
+import { PageHead, Loading, Modal } from '../components/ui';
+import { Avatar } from '../components/Avatar';
 
 function lastSeen(p) {
   if (!p?.last_active) return 'Offline';
@@ -11,12 +12,11 @@ function lastSeen(p) {
   return `Last active ${fmtDateTime(p.last_active)}`;
 }
 
-function ChatPane({ convoId, title, peerOnline, peerStatus, onCall, mySide, member }) {
+function ChatPane({ convoId, title, peerOnline, peerStatus, onCall, mySide, member, peerUid }) {
   const { uid, user } = useSession();
   const messages = useCollection(`conversations/${convoId}/messages`, { orderBy: ['date_sent', 'asc'] });
   const [text, setText] = useState('');
   const bodyRef = useRef(null);
-  const otherSide = mySide === 'student' ? 'officer' : 'student';
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
@@ -25,11 +25,11 @@ function ChatPane({ convoId, title, peerOnline, peerStatus, onCall, mySide, memb
   // Read indicators: mark the other side's messages as read while the chat is open.
   useEffect(() => {
     if (!messages || document.visibilityState !== 'visible') return;
-    const unread = messages.filter((m) => m.sender_type === otherSide && m.status !== 'read');
+    const unread = messages.filter((m) => m.sender_uid !== uid && m.status !== 'read');
     if (!unread.length) return;
     unread.forEach((m) => api.update(`conversations/${convoId}/messages/${m.id}`, { status: 'read' }).catch(() => {}));
     api.update(`conversations/${convoId}`, mySide === 'student' ? { student_unread: 0 } : { staff_unread: 0 }).catch(() => {});
-  }, [messages, convoId, otherSide, mySide]);
+  }, [messages, convoId, uid, mySide]);
 
   const send = async (e) => {
     e.preventDefault();
@@ -54,21 +54,35 @@ function ChatPane({ convoId, title, peerOnline, peerStatus, onCall, mySide, memb
   return (
     <div className="card chat">
       <div className="chat-head">
-        <div>
+        <div className="row">
+          <Avatar uid={peerUid} name={title} size={40} online={peerOnline} />
+          <div>
           <h3>{title}</h3>
           <div className="convo-status"><span className={`status-dot${peerOnline ? ' on' : ''}`} />{peerStatus}</div>
+          </div>
         </div>
         <button className="btn light" onClick={onCall}><Video /> Video Call</button>
       </div>
       <div className="chat-body" ref={bodyRef}>
-        {!messages ? <Loading /> : messages.length === 0 ? <div className="empty" style={{ margin: 'auto' }}>No messages yet. Say hello!</div> : messages.map((m) => {
-          const mine = m.sender_type === mySide;
+        {!messages ? <Loading /> : messages.length === 0 ? <div className="empty" style={{ margin: 'auto' }}>No messages yet. Say hello!</div> : messages.map((m, i) => {
+          // Like Messenger: my messages on the right, everyone else on the left.
+          const mine = m.sender_uid === uid;
+          const next = messages[i + 1];
+          const lastOfGroup = !next || next.sender_uid !== m.sender_uid;
+          const prev = messages[i - 1];
+          const firstOfGroup = !prev || prev.sender_uid !== m.sender_uid;
+          const who = m.sender_type === 'student' ? (m.sender_name || 'Student') : `${m.sender_name || 'Officer'} · Officer`;
           return (
-            <div key={m.id} className={`bubble${mine ? ' mine' : ''}`}>
-              {m.message_text}
-              <div className="meta">
-                {m.sender_type === 'student' ? 'Student' : `Officer${m.sender_name && mySide === 'officer' ? ` (${m.sender_name})` : ''}`}
-                {' · '}{fmtTime(m.date_sent)}{' · '}{m.status === 'read' ? 'Read' : 'Sent'}
+            <div key={m.id} className={`msg-row ${mine ? 'mine' : 'theirs'}`}>
+              {!mine && (lastOfGroup ? <Avatar uid={m.sender_uid} name={m.sender_name || '?'} size={30} /> : <div style={{ width: 30, flexShrink: 0 }} />)}
+              <div>
+                {!mine && firstOfGroup && <div className="msg-name">{who}</div>}
+                <div className={`bubble ${mine ? 'mine' : 'theirs'}`}>
+                  {m.message_text}
+                  {(lastOfGroup || mine) && (
+                    <div className="meta">{fmtTime(m.date_sent)}{mine ? ` · ${m.status === 'read' ? 'Seen' : 'Sent'}` : ''}</div>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -92,7 +106,7 @@ function NewChat({ onPick, onClose }) {
       <div style={{ maxHeight: 320, overflowY: 'auto', marginTop: 12 }}>
         {!students ? <Loading /> : rows.length === 0 ? <div className="empty">No students with an app login.</div> : rows.map((s) => (
           <button key={s.id} className="convo" onClick={() => onPick(s)}>
-            <div className="avatar">{initials(s.full_name)}</div>
+            <Avatar uid={s.id} name={s.full_name} size={40} />
             <div><div className="convo-name">{s.full_name}</div><div className="convo-sub">{s.username}</div></div>
           </button>
         ))}
@@ -131,7 +145,7 @@ function StaffMessenger() {
             const p = pres(c.id);
             return (
               <button key={c.id} className={`convo${c.id === active ? ' active' : ''}`} onClick={() => setActive(c.id)}>
-                <div className="avatar">{initials(c.student_name || 'Student')}<span className={`dot${isOnline(p) ? ' on' : ''}`} /></div>
+                <Avatar uid={c.id} name={c.student_name || 'Student'} size={42} online={isOnline(p)} />
                 <div style={{ minWidth: 0 }}>
                   <div className="convo-name">{c.student_name || 'Student'}</div>
                   <div className="convo-sub">{isOnline(p) ? 'Active now' : c.last_message || 'New conversation'}</div>
@@ -146,6 +160,7 @@ function StaffMessenger() {
             key={current.id}
             convoId={current.id}
             title={current.student_name || 'Student'}
+            peerUid={current.id}
             member={current}
             mySide="officer"
             peerOnline={isOnline(pres(current.id))}

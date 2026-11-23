@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutGrid, User, Settings, Megaphone, CalendarDays, FileText, PhilippinePeso, BarChart3,
@@ -5,8 +6,8 @@ import {
 } from 'lucide-react';
 import { ROLES, can } from '../data/api';
 import { useSession, useCollection } from '../data/hooks';
-import { initials } from './ui';
 import InstallButton from './InstallButton';
+import { Avatar, ProfileModal } from './Avatar';
 
 const MAIN = [
   ['/', 'dashboard', 'Dashboard', LayoutGrid],
@@ -43,7 +44,8 @@ function Section({ label, items, role }) {
 }
 
 export default function Layout({ children, demo }) {
-  const { user, signOut } = useSession();
+  const { uid, user, signOut } = useSession();
+  const [profile, setProfile] = useState(false);
   const { pathname } = useLocation();
   const role = user.role;
   const staff = role !== 'student';
@@ -60,8 +62,8 @@ export default function Layout({ children, demo }) {
             <div className="brand-sub">PTC Organization</div>
           </div>
         </div>
-        <div className="me">
-          <div className="avatar">{initials(user.username || user.full_name).slice(0, 1)}</div>
+        <div className="me" style={{ cursor: 'pointer' }} onClick={() => setProfile(true)} title="My profile and picture">
+          <Avatar uid={uid} name={user.full_name || user.username} size={40} />
           <div>
             <div className="me-name">{user.username}</div>
             <div className="me-role">{ROLES[role]}</div>
@@ -87,10 +89,11 @@ export default function Layout({ children, demo }) {
           <div className="row">
             <InstallButton className="btn light sm" />
             {demo && <span className="demo-pill" title="No Firebase config yet: data is saved in this browser only">Demo mode</span>}
-            <div className="top-user"><span className="green-dot" /> {user.username}</div>
+            <div className="top-user" style={{ cursor: 'pointer' }} onClick={() => setProfile(true)}><span className="green-dot" /> {user.username}</div>
           </div>
         </header>
         <main className="content">{children}</main>
+        {profile && <ProfileModal onClose={() => setProfile(false)} />}
         <div className="footer">JPCS HUB · Pateros Technological College</div>
       </div>
     </div>

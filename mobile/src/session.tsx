@@ -50,12 +50,29 @@ export function useAuthState() {
   return { uid, user, notice, setNotice };
 }
 
+// Profile pictures: profiles/{uid}.photo (small JPEG data URL), shared app-wide.
+const PhotosCtx = createContext<Record<string, string>>({});
+export function usePhoto(uid?: string) {
+  const map = useContext(PhotosCtx);
+  return uid ? map[uid] || '' : '';
+}
+
 export function SessionProvider({ uid, user, children }: { uid: string; user: Row; children: ReactNode }) {
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+  useEffect(() => sub('profiles', {}, (rows) => {
+    const m: Record<string, string> = {};
+    for (const r of rows) if (r.photo) m[r.id] = r.photo;
+    setPhotos(m);
+  }), []);
   const signOut = async () => {
     await set(`presence/${uid}`, { last_active: 0 }, true).catch(() => {});
     await signOutUser();
   };
-  return <Ctx.Provider value={{ uid, user, isStudent: user.role === 'student', signOut }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ uid, user, isStudent: user.role === 'student', signOut }}>
+      <PhotosCtx.Provider value={photos}>{children}</PhotosCtx.Provider>
+    </Ctx.Provider>
+  );
 }
 
 export function useCollection(path: string | null, opts: Parameters<typeof sub>[1] = {}) {
