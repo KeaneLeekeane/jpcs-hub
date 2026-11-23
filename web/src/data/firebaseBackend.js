@@ -1,6 +1,6 @@
 import { initializeApp, deleteApp } from 'firebase/app';
 import {
-  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  getAuth, signInWithEmailAndPassword, deleteUser, createUserWithEmailAndPassword,
   onAuthStateChanged, signOut, inMemoryPersistence, setPersistence,
 } from 'firebase/auth';
 import {
@@ -41,6 +41,7 @@ export const firebaseBackend = {
       return cred.user.uid;
     },
     signOut: () => signOut(auth),
+    deleteSelf: () => (auth.currentUser ? deleteUser(auth.currentUser) : Promise.resolve()),
     onChange: (cb) => onAuthStateChanged(auth, (u) => cb(u ? u.uid : null)),
     // Creates another person's login without signing the current user out,
     // by using a temporary second Firebase app instance.

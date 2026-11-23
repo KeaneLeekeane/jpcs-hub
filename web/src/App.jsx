@@ -32,8 +32,10 @@ function useAuthSession() {
     setUser(undefined);
     return api.subDoc(`users/${uid}`, (doc) => {
       if (!doc) {
-        setNotice('This login has no JPCS HUB account record. Ask the admin to add it.');
-        api.auth.signOut();
+        // Account deleted by the Admin: remove the leftover login too.
+        api.get(`deleted_users/${uid}`).then((d) => (d ? api.auth.deleteSelf() : null)).catch(() => {})
+          .finally(() => api.auth.signOut().catch(() => {}));
+        setNotice('This account was deleted or has no JPCS HUB record. Please contact the JPCS admin.');
       } else if (doc.status === 'inactive') {
         setNotice('This account has been deactivated. Please contact the JPCS admin.');
         api.auth.signOut();

@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import * as FirebaseAuth from 'firebase/auth';
 import {
-  getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDoc, query, where, increment,
+  getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDoc, query, where, increment, writeBatch,
 } from 'firebase/firestore';
 import { deleteApp } from 'firebase/app';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -63,6 +63,17 @@ export const set = (path: string, data: object, merge = false) => setDoc(doc(db!
 export const update = (path: string, data: object) => updateDoc(doc(db!, path), data as any);
 export const newId = (path: string) => doc(collection(db!, path)).id;
 export const remove = (path: string) => deleteDoc(doc(db!, path));
+export const deleteSelf = () => (auth?.currentUser ? FirebaseAuth.deleteUser(auth.currentUser) : Promise.resolve());
+export async function batch(ops: { op: 'set' | 'update' | 'delete'; path: string; data?: any }[]) {
+  const b = writeBatch(db!);
+  for (const o of ops) {
+    const r = doc(db!, o.path);
+    if (o.op === 'set') b.set(r, o.data);
+    else if (o.op === 'update') b.update(r, o.data);
+    else b.delete(r);
+  }
+  await b.commit();
+}
 export async function get(path: string): Promise<Row | null> {
   const snap = await getDoc(doc(db!, path));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;

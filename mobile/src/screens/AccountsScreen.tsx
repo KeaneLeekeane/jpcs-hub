@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useCollection, useNow, useSession } from '../session';
-import { authError, createAccount, isOnline, set, update, type Row } from '../firebase';
+import { authError, batch, createAccount, isOnline, set, update, type Row } from '../firebase';
 import { Page, Card, T, Btn, Field, Chips, Badge, Sheet, Empty, Loading, ErrorText } from '../kit';
 import { Avatar, IconButton } from '../ui';
 import { ROLES, fmtDate } from '../helpers';
@@ -79,6 +79,24 @@ export default function AccountsScreen({ onBack }: { onBack?: () => void }) {
       { text: u.status === 'inactive' ? 'Activate' : 'Deactivate', style: u.status === 'inactive' ? 'default' : 'destructive', onPress: () => update(`users/${u.id}`, { status: u.status === 'inactive' ? 'active' : 'inactive' }) },
     ]);
 
+  const del = (u: Row) => Alert.alert('Delete account?', `${u.full_name || u.username} (${u.username}) will be removed and can no longer log in. Their chat messages stay. This cannot be undone.`, [
+    { text: 'Cancel', style: 'cancel' },
+    {
+      text: 'Delete', style: 'destructive', onPress: async () => {
+        const ops: { op: 'set' | 'update' | 'delete'; path: string; data?: any }[] = [
+          { op: 'set', path: `deleted_users/${u.id}`, data: { username: u.username, deleted_by: uid, date_deleted: Date.now() } },
+          { op: 'delete', path: `users/${u.id}` },
+          { op: 'delete', path: `presence/${u.id}` },
+          { op: 'delete', path: `profiles/${u.id}` },
+        ];
+        if (u.member_id) ops.push({ op: 'update', path: `members/${u.member_id}`, data: { uid: '', username: '' } });
+        try { await batch(ops); } catch {
+          try { await batch(ops.filter((o) => !o.path.startsWith('members/'))); } catch (e: any) { Alert.alert('Could not delete', e?.message || ''); }
+        }
+      },
+    },
+  ]);
+
   return (
     <Page title="User Accounts" subtitle="Admin only" onBack={onBack}
       right={<IconButton name="person-add" label="Add account" onPress={() => setEditing(null)} />}>
@@ -99,7 +117,8 @@ export default function AccountsScreen({ onBack }: { onBack?: () => void }) {
           </View>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <Btn title="Edit" kind="light" onPress={() => setEditing(u)} style={{ flex: 1, paddingVertical: 8 }} />
-            {u.id !== uid && <Btn title={u.status === 'inactive' ? 'Activate' : 'Deactivate'} kind={u.status === 'inactive' ? 'green' : 'danger'} onPress={() => toggle(u)} style={{ flex: 1, paddingVertical: 8 }} />}
+            {u.id !== uid && <Btn title={u.status === 'inactive' ? 'Activate' : 'Deactivate'} kind={u.status === 'inactive' ? 'green' : 'light'} onPress={() => toggle(u)} style={{ flex: 1, paddingVertical: 8 }} />}
+            {u.id !== uid && <Btn title="Delete" kind="danger" icon="trash-outline" onPress={() => del(u)} style={{ flex: 1, paddingVertical: 8 }} />}
           </View>
         </Card>
       ))}

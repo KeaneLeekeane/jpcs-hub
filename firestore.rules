@@ -43,6 +43,13 @@ service cloud.firestore {
     match /presence/{uid} {
       allow read: if active();
       allow write: if signedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+
+    // Accounts deleted by the Admin; the person's leftover login erases itself.
+    match /deleted_users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if isAdmin();
     }
 
     // Profile pictures (small JPEG, set by each user for themselves)
@@ -50,6 +57,7 @@ service cloud.firestore {
       allow read: if active();
       allow write: if active() && request.auth.uid == uid
                    && request.resource.data.photo is string && request.resource.data.photo.size() < 300000;
+      allow delete: if isAdmin();
     }
 
     // MEMBER

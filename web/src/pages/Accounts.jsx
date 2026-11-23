@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api, authError, ROLES, fmtDate, isOnline } from '../data/api';
 import { useCollection, useNow, useSession } from '../data/hooks';
-import { Modal, PageHead, Field, StatusBadge, Loading } from '../components/ui';
+import { Modal, Confirm, PageHead, Field, StatusBadge, Loading } from '../components/ui';
 import { Avatar } from '../components/Avatar';
 
 const STAFF_ROLES = ['admin', 'officer', 'treasurer', 'auditor'];
@@ -83,6 +83,20 @@ export default function Accounts() {
 
   const rows = (users || []).filter((u) => (filter === 'all' ? true : filter === 'staff' ? u.role !== 'student' : u.role === 'student'));
   const toggle = (u) => api.update(`users/${u.id}`, { status: u.status === 'inactive' ? 'active' : 'inactive' });
+  const [deleting, setDeleting] = useState(null);
+  const removeAccount = async (u) => {
+    const ops = [
+      { op: 'set', path: `deleted_users/${u.id}`, data: { username: u.username, deleted_by: uid, date_deleted: Date.now() } },
+      { op: 'delete', path: `users/${u.id}` },
+      { op: 'delete', path: `presence/${u.id}` },
+      { op: 'delete', path: `profiles/${u.id}` },
+    ];
+    if (u.member_id) ops.push({ op: 'update', path: `members/${u.member_id}`, data: { uid: '', username: '' } });
+    try { await api.batch(ops); } catch {
+      // member record may already be gone; retry without it
+      await api.batch(ops.filter((o) => !o.path.startsWith('members/')));
+    }
+  };
 
   return (
     <>
@@ -112,7 +126,10 @@ export default function Accounts() {
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <button className="chip-btn edit" onClick={() => setEditing(u)}>Edit</button>
                       {u.id !== uid && (
-                        <button className="chip-btn del" onClick={() => toggle(u)}>{u.status === 'inactive' ? 'Activate' : 'Deactivate'}</button>
+                        <>
+                          <button className="chip-btn del" onClick={() => toggle(u)}>{u.status === 'inactive' ? 'Activate' : 'Deactivate'}</button>
+                          <button className="chip-btn del" style={{ background: '#c53030', color: '#fff' }} onClick={() => setDeleting(u)}>Delete</button>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -122,10 +139,19 @@ export default function Accounts() {
           </div>
         )}
         <p className="small muted" style={{ marginBottom: 0 }}>
-          Deactivated accounts can no longer sign in to the portal or the mobile app. Student logins are created from Membership Records.
+          Deactivated accounts can no longer sign in (you can activate them again). Deleted accounts are removed permanently. Student logins are created from Membership Records.
         </p>
       </div>
       {editing && <AccountForm account={editing} onClose={() => setEditing(null)} />}
+      {deleting && (
+        <Confirm
+          title="Delete account?"
+          message={`${deleting.full_name || deleting.username} (${deleting.username}) will be removed and can no longer log in to the portal or the app. Their chat messages stay. This cannot be undone.`}
+          confirmLabel="Delete account"
+          onConfirm={() => removeAccount(deleting)}
+          onClose={() => setDeleting(null)}
+        />
+      )}
     </>
   );
 }

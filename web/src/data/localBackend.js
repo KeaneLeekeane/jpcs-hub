@@ -126,6 +126,12 @@ export const localBackend = {
       return acc.uid;
     },
     async signOut() { sessionStorage.removeItem(SESSION); notify(); },
+    async deleteSelf() {
+      const id = currentUid();
+      mutate(() => { for (const [k, v] of Object.entries(state.auth)) if (v.uid === id) delete state.auth[k]; });
+      sessionStorage.removeItem(SESSION);
+      notify();
+    },
     onChange(cb) {
       authSubs.add(cb);
       setTimeout(() => cb(currentUid()), 0);

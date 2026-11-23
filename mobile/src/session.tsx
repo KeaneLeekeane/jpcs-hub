@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
-import { onAuth, signOutUser, subDoc, set, sub, type Row } from './firebase';
+import { onAuth, signOutUser, subDoc, set, sub, get, deleteSelf, type Row } from './firebase';
 
 export type Session = {
   uid: string;
@@ -25,7 +25,12 @@ export function useAuthState() {
     if (!uid) { setUser(uid === null ? null : undefined); return undefined; }
     setUser(undefined);
     return subDoc(`users/${uid}`, (doc) => {
-      if (!doc) { setNotice('This login has no JPCS HUB account. Please contact a JPCS officer.'); signOutUser(); }
+      if (!doc) {
+        // Deleted by the Admin: erase the leftover login too, then sign out.
+        setNotice('This account was deleted or has no JPCS HUB record. Please contact the JPCS admin.');
+        get(`deleted_users/${uid}`).then((d) => (d ? deleteSelf() : null)).catch(() => {})
+          .finally(() => { signOutUser().catch(() => {}); });
+      }
       else if (doc.status === 'inactive') { setNotice('This account is deactivated. Please contact a JPCS officer.'); signOutUser(); }
       else setUser(doc);
     });
