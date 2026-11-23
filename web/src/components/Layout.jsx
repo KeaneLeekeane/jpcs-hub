@@ -5,7 +5,7 @@ import {
   MessageSquare, LogOut, IdCard,
 } from 'lucide-react';
 import { ROLES, can } from '../data/api';
-import { useSession, useCollection, useDoc } from '../data/hooks';
+import { useSession, useCollection } from '../data/hooks';
 import InstallButton from './InstallButton';
 import { Avatar, ProfileModal } from './Avatar';
 
@@ -50,12 +50,8 @@ export default function Layout({ children, demo }) {
   const { pathname } = useLocation();
   const role = user.role;
   const staff = role !== 'student';
-  const convos = useCollection(staff ? 'conversations' : null);
   const dms = useCollection('dms', { where: [['members', uid, 'array-contains']] });
-  const mine = useDoc(staff ? null : `conversations/${uid}`);
-  const unread = (convos || []).reduce((n, c) => n + (c.staff_unread || 0), 0)
-    + (dms || []).reduce((n, d) => n + (d[`unread_${uid}`] || 0), 0)
-    + (mine?.student_unread || 0);
+  const unread = (dms || []).reduce((n, d) => n + (d[`unread_${uid}`] || 0), 0);
 
   return (
     <div className="app">

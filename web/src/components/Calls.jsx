@@ -44,16 +44,11 @@ export function CallProvider({ children }) {
   const [, force] = useState(0);
   const [dismissed, setDismissed] = useState(() => new Set());
   const [toast, setToast] = useState('');
-  const staff = user.role !== 'student';
   const me = { uid, name: user.full_name || user.username, role: user.role };
 
-  // Calls ringing for me: staff get calls addressed to "JPCS Officers";
-  // students get calls addressed to them.
-  // Calls ringing for me: calls addressed to me directly (any role), plus,
-  // for officers/staff, calls a student made to "JPCS Officers".
+  // Calls ringing for me (every call is one-on-one).
   const direct = useCollection('calls', { where: [['callee_uid', uid], ['status', 'ringing']] });
-  const toStaff = useCollection(staff ? 'calls' : null, { where: [['callee_type', 'staff'], ['status', 'ringing']] });
-  const incoming = [...(direct || []), ...(toStaff || [])].find(
+  const incoming = (direct || []).find(
     (c) => c.caller_uid !== uid && !dismissed.has(c.id)
       // tolerate phone/laptop clocks that differ a little
       && Math.abs(Date.now() - (c.created_at || 0)) < RING_TIMEOUT_MS + 60000

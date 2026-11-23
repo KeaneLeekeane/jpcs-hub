@@ -149,13 +149,15 @@ service cloud.firestore {
     }
 
     // CALL_SESSION (+ WebRTC ICE candidates)
+    // Every call is one-on-one: only the caller and the person being called.
     match /calls/{callId} {
       function party() {
-        return isStaff()
-          || (active() && (resource.data.caller_uid == request.auth.uid || resource.data.callee_uid == request.auth.uid));
+        return active()
+          && (resource.data.caller_uid == request.auth.uid || resource.data.callee_uid == request.auth.uid);
       }
       allow read: if party();
-      allow create: if active() && request.resource.data.caller_uid == request.auth.uid;
+      allow create: if active() && request.resource.data.caller_uid == request.auth.uid
+                    && request.resource.data.callee_uid is string && request.resource.data.callee_uid != '';
       allow update: if party();
       allow delete: if isAdmin();
       match /{side}/{candId} {

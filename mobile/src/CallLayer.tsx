@@ -32,10 +32,8 @@ export function CallLayer({ children }: { children: ReactNode }) {
   const sessionRef = useRef<CallSession | null>(null);
   sessionRef.current = session;
 
-  // Calls addressed to me directly (any role) + calls students make to "JPCS Officers".
-  const direct = useCollection('calls', { where: [['callee_uid', uid], ['status', 'ringing']] });
-  const toStaff = useCollection(isStudent ? null : 'calls', { where: [['callee_type', 'staff'], ['status', 'ringing']] });
-  const ringing = [...(direct || []), ...(toStaff || [])];
+  // Calls ringing for me (every call is one-on-one).
+  const ringing = useCollection('calls', { where: [['callee_uid', uid], ['status', 'ringing']] }) || [];
   const busy = !!session && session.status !== 'ended';
   const incoming = ringing.find((c) => c.caller_uid !== uid && !dismissed.has(c.id)
     && Math.abs(Date.now() - (c.created_at || 0)) < RING_TIMEOUT_MS + 60000 && !busy);

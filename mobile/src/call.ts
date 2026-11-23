@@ -11,7 +11,7 @@ import { turn } from './firebaseConfig';
 export const RING_TIMEOUT_MS = 45000;
 
 export type Me = { uid: string; name: string; role: string };
-export type Target = { calleeType: 'staff' | 'student' | 'user'; calleeUid: string; conversationId: string; memberId: string; name: string };
+export type Target = { calleeType: 'user'; calleeUid: string; conversationId: string; memberId: string; name: string };
 export type CallStatus = 'idle' | 'calling' | 'connecting' | 'connected' | 'ended';
 
 function iceServers() {
@@ -140,7 +140,7 @@ export class CallSession {
         member_id: target.memberId || '', user_id: me.role === 'student' ? '' : me.uid,
         conversation_id: target.conversationId,
         caller_uid: me.uid, caller_name: me.name || 'JPCS HUB user', caller_type: me.role === 'student' ? 'student' : 'staff',
-        callee_type: target.calleeType, callee_uid: target.calleeUid || '', callee_name: target.name || 'Student',
+        callee_type: target.calleeType, callee_uid: target.calleeUid || '', callee_name: target.name || 'User',
         status: 'ringing', offer: { type: offer.type, sdp: offer.sdp }, answer: null,
         answered_by: '', answered_name: '',
         created_at: Date.now(), start_time: 0, end_time: 0, session_link: `calls/${this.id}`,

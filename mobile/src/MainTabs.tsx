@@ -8,7 +8,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCollection, useSession, usePhoto } from './session';
-import { set, subDoc, type Row } from './firebase';
+import { set } from './firebase';
 import { can, ROLES } from './helpers';
 import { colors } from './theme';
 import { Avatar } from './ui';
@@ -116,12 +116,8 @@ export default function MainTabs() {
   const [chat, setChat] = useState<Thread | null>(null);
   const [module, setModule] = useState<string | null>(null);
 
-  const convos = useCollection(isStudent ? null : 'conversations');
-  const [mine, setMine] = useState<Row | null>(null);
-  useEffect(() => (isStudent ? subDoc(`conversations/${uid}`, setMine) : undefined), [isStudent, uid]);
   const dms = useCollection('dms', { where: [['members', uid, 'array-contains']] });
-  const unread = (isStudent ? (mine?.student_unread || 0) : (convos || []).reduce((n, c) => n + (c.staff_unread || 0), 0))
-    + (dms || []).reduce((n, d) => n + (d[`unread_${uid}`] || 0), 0);
+  const unread = (dms || []).reduce((n, d) => n + (d[`unread_${uid}`] || 0), 0);
 
   // Android back button: close the open chat/module first.
   useEffect(() => {
@@ -156,7 +152,7 @@ export default function MainTabs() {
   let body: ReactNode;
   if (tab === 'messages') {
     body = chat
-      ? <ChatScreen key={`${chat.kind}:${chat.id}`} thread={chat} onBack={() => setChat(null)} />
+      ? <ChatScreen key={chat.id} thread={chat} onBack={() => setChat(null)} />
       : <ConversationsScreen onOpen={setChat} />;
   } else if (tab === 'home') {
     body = <DashboardScreen onOpen={(k) => {

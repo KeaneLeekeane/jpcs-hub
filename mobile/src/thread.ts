@@ -1,11 +1,8 @@
-// A chat thread: the student ↔ JPCS Officers conversation, or a direct chat.
+// A private 1-on-1 chat stored at dms/{uidA_uidB}.
 export type Thread = {
-  kind: 'student' | 'dm';
-  id: string;
-  base: string; // conversations/{studentUid} or dms/{uidA_uidB}
-  title: string;
-  peerUid?: string;
-  memberId?: string;
+  id: string;        // pairId
+  title: string;     // the other person's name
+  peerUid: string;   // the other person's uid
 };
 
 export const pairId = (a: string, b: string) => [a, b].sort().join('_');
