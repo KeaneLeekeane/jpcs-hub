@@ -101,7 +101,7 @@ export function authError(e: any) {
   const c = String(e?.code || '');
   if (c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found') || c.includes('invalid-email'))
     return 'Invalid username or password.';
-  if (c.includes('email-already-in-use')) return 'That username is already in use.';
+  if (c.includes('email-already-in-use')) return 'That username is already in use. If this account was deleted before, its login still holds the username — use a different username (for example add a number).';
   if (c.includes('weak-password')) return 'Password must be at least 6 characters.';
   if (c.includes('permission-denied')) return 'You do not have permission to do that.';
   if (c.includes('too-many-requests')) return 'Too many attempts. Please wait and try again.';

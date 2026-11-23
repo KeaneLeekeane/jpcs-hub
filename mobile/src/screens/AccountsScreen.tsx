@@ -81,7 +81,7 @@ export default function AccountsScreen({ onBack }: { onBack?: () => void }) {
       { text: u.status === 'inactive' ? 'Activate' : 'Deactivate', style: u.status === 'inactive' ? 'default' : 'destructive', onPress: () => update(`users/${u.id}`, { status: u.status === 'inactive' ? 'active' : 'inactive' }) },
     ]);
 
-  const del = (u: Row) => Alert.alert('Delete account?', `${u.full_name || u.username} (${u.username}) will be removed and can no longer log in. Their chat messages stay. This cannot be undone.`, [
+  const del = (u: Row) => Alert.alert('Delete account?', `${u.full_name || u.username} (${u.username}) will be removed and can no longer log in. Their chat messages stay, and the username stays reserved. This cannot be undone.`, [
     { text: 'Cancel', style: 'cancel' },
     {
       text: 'Delete', style: 'destructive', onPress: async () => {

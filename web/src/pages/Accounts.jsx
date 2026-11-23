@@ -151,7 +151,7 @@ export default function Accounts() {
       {deleting && (
         <Confirm
           title="Delete account?"
-          message={`${deleting.full_name || deleting.username} (${deleting.username}) will be removed and can no longer log in to the portal or the app. Their chat messages stay. This cannot be undone.`}
+          message={`${deleting.full_name || deleting.username} (${deleting.username}) will be removed and can no longer log in to the portal or the app. Their chat messages stay, and the username stays reserved. This cannot be undone.`}
           confirmLabel="Delete account"
           onConfirm={() => removeAccount(deleting)}
           onClose={() => setDeleting(null)}

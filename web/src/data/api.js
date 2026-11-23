@@ -49,7 +49,7 @@ export function authError(e) {
   const c = e?.code || '';
   if (c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found'))
     return 'Invalid username or password.';
-  if (c.includes('email-already-in-use')) return 'That username or e-mail is already in use.';
+  if (c.includes('email-already-in-use')) return 'That username is already in use. If this account was deleted before, its login still holds the username — use a different username (for example add a number).';
   if (c.includes('weak-password')) return 'Password must be at least 6 characters.';
   if (c.includes('too-many-requests')) return 'Too many attempts. Please wait a moment and try again.';
   if (c.includes('network')) return 'No internet connection.';
