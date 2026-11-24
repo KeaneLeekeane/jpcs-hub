@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { add, inc, isOnline, update } from '../firebase';
+import { add, inc, isOnline, subDoc, update, type Row } from '../firebase';
 import { useCollection, useNow, useSession } from '../session';
 import { useCalls } from '../CallLayer';
 import { Avatar, Header, IconButton } from '../ui';
@@ -21,7 +21,12 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: { thread: Thre
   const { startCall } = useCalls();
   const insets = useSafeAreaInsets();
   const base = `dms/${thread.id}`;
-  const messages = useCollection(`${base}/messages`, { orderBy: ['date_sent', 'desc'] });
+  const all = useCollection(`${base}/messages`, { orderBy: ['date_sent', 'desc'] });
+  // Messages from before "Delete conversation" stay hidden for this user only.
+  const [chatDoc, setChatDoc] = useState<Row | null>(null);
+  useEffect(() => subDoc(base, setChatDoc), [base]);
+  const cleared = Number(chatDoc?.[`cleared_${uid}`] || 0);
+  const messages = all && all.filter((m) => (m.date_sent || 0) > cleared);
   const presence = useCollection('presence');
   const [text, setText] = useState('');
   const [appActive, setAppActive] = useState(AppState.currentState === 'active');
@@ -56,7 +61,10 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: { thread: Thre
       sender_type: isStudent ? 'student' : 'officer',
       message_text: body, date_sent: now, status: 'sent',
     });
-    await update(base, { last_message: body, last_time: now, last_sender_uid: uid, [`unread_${thread.peerUid}`]: inc(1) });
+    await update(base, {
+      last_message: body, last_time: now, last_sender_uid: uid, [`unread_${thread.peerUid}`]: inc(1),
+      [`hidden_${uid}`]: false, [`hidden_${thread.peerUid}`]: false,
+    });
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
@@ -71,6 +79,17 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: { thread: Thre
     },
   ]);
 
+  // Delete the whole conversation for me (like Messenger); the other person keeps theirs.
+  const deleteChat = () => Alert.alert('Delete conversation?', `Your whole chat with ${thread.title} will be deleted. ${thread.title} will still have their copy.`, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Delete', style: 'destructive', onPress: async () => {
+      try {
+        await update(base, { [`hidden_${uid}`]: true, [`cleared_${uid}`]: Date.now(), [`unread_${uid}`]: 0 });
+        onBack?.();
+      } catch (e: any) { Alert.alert('Could not delete', e?.message || String(e)); }
+    } },
+  ]);
+
   const call = () => startCall({
     calleeType: 'user', calleeUid: thread.peerUid || '', conversationId: thread.id, memberId: '', name: thread.title || 'User',
   });
@@ -80,7 +99,12 @@ export default function ChatScreen({ thread, onBack, aboveTabs }: { thread: Thre
       <Header
         title={thread.title} subtitle={status} online={online} onBack={onBack}
         avatar={<Avatar uid={thread.peerUid} name={thread.title} size={38} />}
-        right={<IconButton name="videocam" onPress={call} label="Video call" />}
+        right={(
+          <View style={{ flexDirection: 'row' }}>
+            <IconButton name="videocam" onPress={call} label="Video call" />
+            <IconButton name="trash-outline" onPress={deleteChat} label="Delete conversation" />
+          </View>
+        )}
       />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <FlatList

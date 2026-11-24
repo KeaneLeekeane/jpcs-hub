@@ -23,6 +23,7 @@ import { AnnouncementsScreen, EventsScreen } from './screens/NewsScreens';
 import DocumentsScreen from './screens/DocumentsScreen';
 import FinanceScreen from './screens/FinanceScreen';
 import ReportsScreen from './screens/ReportsScreen';
+import StudentReportsScreen from './screens/StudentReportsScreen';
 import MyMembershipScreen from './screens/MyMembershipScreen';
 
 type Icon = keyof typeof Ionicons.glyphMap;
@@ -136,6 +137,7 @@ export default function MainTabs() {
       { key: 'messages', label: 'Messages', icon: 'chatbubbles-outline' as Icon, badge: unread },
       { key: 'announcements', label: 'News', icon: 'megaphone-outline' as Icon },
       { key: 'events', label: 'Events', icon: 'calendar-outline' as Icon },
+      { key: 'myreports', label: 'Reports', icon: 'bar-chart-outline' as Icon },
       { key: 'profile', label: 'Me', icon: 'person-circle-outline' as Icon },
     ]
     : [
@@ -159,6 +161,8 @@ export default function MainTabs() {
       if (isStudent) { setTab(k === 'announcements' ? 'announcements' : k === 'membership' ? 'profile' : 'events'); return; }
       setTab('more'); setModule(k);
     }} />;
+  } else if (tab === 'myreports') {
+    body = <StudentReportsScreen />;
   } else if (tab === 'membership') {
     body = <MyMembershipScreen />;
   } else if (tab === 'profile') {

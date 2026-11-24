@@ -1,8 +1,8 @@
 // Chat list: private 1-on-1 conversations, like Messenger.
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { isOnline, set, type Row } from '../firebase';
+import { isOnline, set, update, type Row } from '../firebase';
 import { useCollection, useNow, useSession } from '../session';
 import { Avatar, Header, IconButton } from '../ui';
 import { ROLES } from '../helpers';
@@ -58,11 +58,12 @@ export default function ConversationsScreen({ onOpen }: { onOpen: (t: Thread) =>
   const [picking, setPicking] = useState(false);
   const pres = (id?: string) => (presence || []).find((p: Row) => p.id === id);
 
-  const items = useMemo(() => (dms || []).map((d) => {
+  const items = useMemo(() => (dms || []).filter((d) => !d[`hidden_${uid}`]).map((d) => {
     const peer = (d.members || []).find((m: string) => m !== uid) || '';
     return {
       id: d.id, peerUid: peer, title: d.names?.[peer] || 'User',
-      last_time: d.last_time || 0, sub: d.last_message || 'New conversation', unread: d[`unread_${uid}`] || 0,
+      last_time: d.last_time || 0, unread: d[`unread_${uid}`] || 0,
+      sub: (d.last_time || 0) > (d[`cleared_${uid}`] || 0) ? (d.last_message || 'New conversation') : 'New conversation',
     } as Item;
   }).sort((a, b) => b.last_time - a.last_time), [dms, uid]);
 
@@ -71,9 +72,19 @@ export default function ConversationsScreen({ onOpen }: { onOpen: (t: Thread) =>
     await set(`dms/${id}`, {
       members: [uid, u.id].sort(),
       names: { [uid]: user.full_name || user.username, [u.id]: u.full_name || u.username },
+      [`hidden_${uid}`]: false,
     }, true);
     onOpen({ id, title: u.full_name || u.username, peerUid: u.id });
   };
+
+  // Delete the whole conversation for me (like Messenger); the other person keeps theirs.
+  const deleteChat = (c: Item) => Alert.alert('Delete conversation?', `Your whole chat with ${c.title} will be deleted. ${c.title} will still have their copy.`, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Delete', style: 'destructive', onPress: () => {
+      update(`dms/${c.id}`, { [`hidden_${uid}`]: true, [`cleared_${uid}`]: Date.now(), [`unread_${uid}`]: 0 })
+        .catch((e) => Alert.alert('Could not delete', e?.message || String(e)));
+    } },
+  ]);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -100,6 +111,9 @@ export default function ConversationsScreen({ onOpen }: { onOpen: (t: Thread) =>
                 </View>
                 {on && <Text style={s.active}>Active now</Text>}
               </View>
+              <Pressable onPress={() => deleteChat(c)} hitSlop={10} style={{ padding: 8, marginLeft: 4 }} accessibilityLabel="Delete conversation">
+                <Ionicons name="trash-outline" size={19} color="#d64545" />
+              </Pressable>
             </Pressable>
           );
         }}

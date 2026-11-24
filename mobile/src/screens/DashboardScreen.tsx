@@ -16,11 +16,11 @@ export default function DashboardScreen({ onOpen }: { onOpen: (screen: string) =
   const events = useCollection('events', { orderBy: ['event_date', 'asc'] });
   const announcements = useCollection('announcements', { orderBy: ['date_posted', 'desc'] });
   const liquidations = useCollection(isStudent ? null : 'liquidations');
-  const expenses = isStudent ? Number(summary?.expenses || 0) : (liquidations || []).reduce((s, l) => s + Number(l.total_amount || 0), 0);
+  const expenses = isStudent ? 0 : (liquidations || []).reduce((s, l) => s + Number(l.total_amount || 0), 0);
   const memberCount = isStudent ? (summary?.members ?? '…') : (members ? members.length : '…');
   useEffect(() => {
     if (isStudent || !members || !liquidations) return;
-    set('stats/summary', { members: members.length, active_members: members.filter((m) => m.membership_status === 'Active').length, expenses, updated: Date.now() }, true).catch(() => {});
+    set('stats/summary', { members: members.length, active_members: members.filter((m) => m.membership_status === 'Active').length, updated: Date.now() }).catch(() => {});
   }, [isStudent, members?.length, expenses]); // eslint-disable-line react-hooks/exhaustive-deps
   const upcoming = (events || []).filter((e) => (e.event_date || '') >= today() && e.status !== 'Cancelled').slice(0, 3);
 
@@ -34,7 +34,7 @@ export default function DashboardScreen({ onOpen }: { onOpen: (screen: string) =
         <Stat label="Total Members" value={memberCount} icon="person-outline" tone="blue" />
         <Stat label="Total Events" value={events ? events.length : '…'} icon="calendar-outline" tone="purple" />
         <Stat label="Announcements" value={announcements ? announcements.length : '…'} icon="megaphone-outline" tone="amber" />
-        <Stat label="Recorded Expenses" value={!isStudent && !liquidations ? '…' : peso(expenses)} icon="cash-outline" tone="green" />
+        {!isStudent && <Stat label="Recorded Expenses" value={!liquidations ? '…' : peso(expenses)} icon="cash-outline" tone="green" />}
       </View>
       {isStudent && (
         <Card onPress={() => onOpen('membership')}>

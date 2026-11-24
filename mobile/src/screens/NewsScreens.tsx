@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCollection, useSession } from '../session';
-import { add, remove, update, type Row } from '../firebase';
+import { add, newId, remove, set, update, type Row } from '../firebase';
 import { Page, Card, T, Btn, Field, Chips, Badge, Sheet, Empty, Loading } from '../kit';
 import { IconButton } from '../ui';
 import { canManage, fmtDate, today } from '../helpers';
@@ -17,20 +17,48 @@ function AnnouncementForm({ item, onClose }: { item: Row | null; onClose: () => 
   const { uid, user } = useSession();
   const [title, setTitle] = useState(item?.title || '');
   const [content, setContent] = useState(item?.content || '');
+  // New announcements are also posted to Events by default.
+  const [toEvents, setToEvents] = useState(item?.id ? (item.event_id ? 'Yes' : 'No') : 'Yes');
+  const [eventDate, setEventDate] = useState(item?.event_date || today());
+  const [venue, setVenue] = useState(item?.venue || '');
+  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const save = async () => {
-    if (!title.trim() || !content.trim()) return;
+    setError('');
+    if (!title.trim() || !content.trim()) { setError('Enter a title and content.'); return; }
+    const on = toEvents === 'Yes';
+    if (on && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) { setError('Event date must look like 2026-12-31.'); return; }
     setBusy(true);
     try {
-      if (item?.id) await update(`announcements/${item.id}`, { title: title.trim(), content: content.trim() });
-      else await add('announcements', { title: title.trim(), content: content.trim(), date_posted: Date.now(), posted_by: uid, posted_by_name: user.full_name || user.username });
+      const id = item?.id || newId('announcements');
+      const ann = { title: title.trim(), content: content.trim() };
+      const ev = { event_title: ann.title, description: ann.content, event_date: eventDate, venue: venue.trim() || 'TBA', announcement_id: id };
+      let eventId = item?.event_id || '';
+      if (on) {
+        if (eventId) await update(`events/${eventId}`, ev);
+        else { eventId = newId('events'); await set(`events/${eventId}`, { ...ev, status: 'Upcoming', created_by: uid }); }
+      } else if (eventId) {
+        await remove(`events/${eventId}`).catch(() => {});
+        eventId = '';
+      }
+      const link = { event_id: eventId, event_date: on ? eventDate : '', venue: on ? ev.venue : '' };
+      if (item?.id) await update(`announcements/${id}`, { ...ann, ...link });
+      else await set(`announcements/${id}`, { ...ann, ...link, date_posted: Date.now(), posted_by: uid, posted_by_name: user.full_name || user.username });
       onClose();
-    } finally { setBusy(false); }
+    } catch (e: any) { setError(e?.message || 'Could not save.'); } finally { setBusy(false); }
   };
   return (
     <Sheet visible title={item?.id ? 'Edit Announcement' : 'Create Announcement'} onClose={onClose}>
+      {!!error && <T style={{ color: '#d64545', marginBottom: 8 }}>{error}</T>}
       <Field label="Title" value={title} onChange={setTitle} />
       <Field label="Content" value={content} onChange={setContent} multiline />
+      <Chips label="Also show in Events" options={['Yes', 'No']} value={toEvents} onChange={setToEvents} />
+      {toEvents === 'Yes' && (
+        <>
+          <Field label="Event Date (YYYY-MM-DD)" value={eventDate} onChange={setEventDate} placeholder="2026-12-31" />
+          <Field label="Venue" value={venue} onChange={setVenue} placeholder="TBA" />
+        </>
+      )}
       <Btn title={item?.id ? 'Save' : 'Post Announcement'} onPress={save} busy={busy} />
     </Sheet>
   );
@@ -47,12 +75,16 @@ export function AnnouncementsScreen({ onBack }: { onBack?: () => void }) {
       {!items ? <Loading /> : items.length === 0 ? <Empty text="No announcements yet." /> : items.map((a) => (
         <Card key={a.id}>
           <T bold style={{ fontSize: 16 }}>{a.title}</T>
+          {!!a.event_id && <T small style={{ color: colors.blue, marginTop: 4 }}>Event: {a.event_date} · {a.venue}</T>}
           <T small muted style={{ marginVertical: 4 }}>Posted {fmtDate(a.date_posted)}{a.posted_by_name ? ` · ${a.posted_by_name}` : ''}</T>
           <T style={{ color: '#4b5568' }}>{a.content}</T>
           {manage && (
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <Btn title="Edit" kind="light" onPress={() => setEditing(a)} style={{ flex: 1, paddingVertical: 8 }} />
-              <Btn title="Delete" kind="danger" onPress={() => confirmDelete('announcement', () => remove(`announcements/${a.id}`))} style={{ flex: 1, paddingVertical: 8 }} />
+              <Btn title="Delete" kind="danger" onPress={() => confirmDelete('announcement', async () => {
+                if (a.event_id) await remove(`events/${a.event_id}`).catch(() => {});
+                await remove(`announcements/${a.id}`);
+              })} style={{ flex: 1, paddingVertical: 8 }} />
             </View>
           )}
         </Card>

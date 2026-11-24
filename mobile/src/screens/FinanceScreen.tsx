@@ -1,5 +1,5 @@
 // Event Fund and Liquidation: Treasurer records budget and expenses (with
-// receipt / proof photos) and submits; Auditor approves or returns with remarks.
+// receipt photos) and submits; Auditor approves or returns with remarks.
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useCollection, useSession } from '../session';
@@ -23,16 +23,15 @@ function ExpenseForm({ eventId, onClose }: { eventId: string; onClose: () => voi
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [amount, setAmount] = useState('');
   const [receipt, setReceipt] = useState('');
-  const [proof, setProof] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const attach = async (which: 'receipt' | 'proof', camera: boolean) => {
+  const attach = async (camera: boolean) => {
     setError('');
     setBusy(true);
     try {
-      const url = await pickAndSavePhoto(which === 'receipt' ? `receipts/${eventId}` : `proofs/${eventId}`, camera);
-      if (url) (which === 'receipt' ? setReceipt : setProof)(url);
+      const url = await pickAndSavePhoto(`receipts/${eventId}`, camera);
+      if (url) setReceipt(url);
     } catch (e: any) { setError(e?.message || 'Could not attach photo.'); } finally { setBusy(false); }
   };
 
@@ -45,7 +44,7 @@ function ExpenseForm({ eventId, onClose }: { eventId: string; onClose: () => voi
     try {
       await add('expense_items', {
         liquidation_id: eventId, event_id: eventId, description: description.trim(), category, amount: value,
-        receipt_url: receipt, proof_url: proof, date_recorded: Date.now(), recorded_by: uid,
+        receipt_url: receipt, date_recorded: Date.now(), recorded_by: uid,
       });
       await update(`liquidations/${eventId}`, { total_amount: inc(value) });
       onClose();
@@ -59,14 +58,9 @@ function ExpenseForm({ eventId, onClose }: { eventId: string; onClose: () => voi
       <Chips label="Category" options={CATEGORIES} value={category} onChange={setCategory} />
       <Field label="Amount (₱)" value={amount} onChange={setAmount} keyboard="decimal-pad" placeholder="Enter amount" />
       <T bold style={{ marginBottom: 6 }}>Official Receipt {receipt ? '✓ attached' : '(optional)'}</T>
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-        <Btn title="Camera" icon="camera" kind="light" onPress={() => attach('receipt', true)} disabled={busy} style={{ flex: 1 }} />
-        <Btn title="Gallery" icon="images" kind="light" onPress={() => attach('receipt', false)} disabled={busy} style={{ flex: 1 }} />
-      </View>
-      <T bold style={{ marginBottom: 6 }}>Proof of Purchase {proof ? '✓ attached' : '(optional)'}</T>
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-        <Btn title="Camera" icon="camera" kind="light" onPress={() => attach('proof', true)} disabled={busy} style={{ flex: 1 }} />
-        <Btn title="Gallery" icon="images" kind="light" onPress={() => attach('proof', false)} disabled={busy} style={{ flex: 1 }} />
+        <Btn title="Camera" icon="camera" kind="light" onPress={() => attach(true)} disabled={busy} style={{ flex: 1 }} />
+        <Btn title="Gallery" icon="images" kind="light" onPress={() => attach(false)} disabled={busy} style={{ flex: 1 }} />
       </View>
       <Btn title="Add Expense" onPress={save} busy={busy} />
     </Sheet>
@@ -164,7 +158,6 @@ export default function FinanceScreen({ onBack }: { onBack?: () => void }) {
                   <T bold style={{ marginTop: 2 }}>{peso(it.amount)}</T>
                 </View>
                 <Thumb url={it.receipt_url} label="Official receipt" onPress={() => open(it.receipt_url)} />
-                <Thumb url={it.proof_url} label="Proof of purchase" onPress={() => open(it.proof_url)} />
                 {canRecord && !locked && <Btn title="✕" kind="danger" onPress={() => deleteItem(it)} style={{ paddingHorizontal: 10, paddingVertical: 6 }} />}
               </View>
             ))}
