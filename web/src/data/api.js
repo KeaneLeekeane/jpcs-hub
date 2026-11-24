@@ -26,6 +26,7 @@ export const ACCESS = {
   documents: ['admin', 'officer', 'treasurer', 'auditor'],
   finance: ['admin', 'treasurer', 'auditor'],
   reports: ['admin', 'officer', 'treasurer', 'auditor'],
+  myreports: ['student'], // students get their own Reports page (no finances)
   messenger: ['admin', 'officer', 'treasurer', 'auditor', 'student'],
 };
 

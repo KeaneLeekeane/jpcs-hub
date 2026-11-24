@@ -16,6 +16,7 @@ import Events from './pages/Events';
 import Documents from './pages/Documents';
 import Finance from './pages/Finance';
 import Reports from './pages/Reports';
+import StudentReports from './pages/StudentReports';
 import Messenger from './pages/Messenger';
 import MyMembership from './pages/MyMembership';
 
@@ -110,7 +111,9 @@ export default function App() {
               <Route path="/events" element={<Guard page="events"><Events /></Guard>} />
               <Route path="/documents" element={<Guard page="documents"><Documents /></Guard>} />
               <Route path="/finance" element={<Guard page="finance"><Finance /></Guard>} />
-              <Route path="/reports" element={<Guard page="reports"><Reports /></Guard>} />
+              <Route path="/reports" element={session.user.role === 'student'
+                ? <Guard page="myreports"><StudentReports /></Guard>
+                : <Guard page="reports"><Reports /></Guard>} />
               <Route path="/messenger" element={<Guard page="messenger"><Messenger /></Guard>} />
               <Route path="/membership" element={<Guard page="membership"><MyMembership /></Guard>} />
               <Route path="*" element={<Navigate to="/" replace />} />

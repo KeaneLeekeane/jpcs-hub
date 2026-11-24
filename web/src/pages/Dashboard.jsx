@@ -17,16 +17,17 @@ export default function Dashboard() {
   const announcements = useCollection('announcements', { orderBy: ['date_posted', 'desc'] });
   const liquidations = useCollection(staff ? 'liquidations' : null);
 
-  const expenses = staff ? (liquidations || []).reduce((s, l) => s + (Number(l.total_amount) || 0), 0) : Number(summary?.expenses || 0);
+  // Expenses are only for staff; students never see or receive them.
+  const expenses = staff ? (liquidations || []).reduce((s, l) => s + (Number(l.total_amount) || 0), 0) : 0;
   const memberCount = staff ? members?.length : summary?.members;
 
   useEffect(() => {
     if (!staff || !members || !liquidations) return;
     api.set('stats/summary', {
       members: members.length, active_members: members.filter((m) => m.membership_status === 'Active').length,
-      expenses, updated: Date.now(),
-    }, { merge: true }).catch(() => {});
-  }, [staff, members?.length, expenses]); // eslint-disable-line react-hooks/exhaustive-deps
+      updated: Date.now(),
+    }).catch(() => {}); // no merge: also clears any old expenses figure students could read
+  }, [staff, members?.length, members?.filter((m) => m.membership_status === 'Active').length]); // eslint-disable-line react-hooks/exhaustive-deps
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = (events || []).filter((e) => (e.event_date || '') >= today && e.status !== 'Cancelled').slice(0, 3);
 
@@ -38,11 +39,11 @@ export default function Dashboard() {
         <Sparkle fill="#fff" stroke="none" />
       </div>
 
-      <div className="grid g4" style={{ marginBottom: 22 }}>
+      <div className={`grid ${staff ? 'g4' : 'g3'}`} style={{ marginBottom: 22 }}>
         <Stat label="Total Members" value={memberCount ?? '…'} icon={UserRound} tone="blue" />
         <Stat label="Total Events" value={events ? events.length : '…'} icon={CalendarDays} tone="purple" />
         <Stat label="Announcements" value={announcements ? announcements.length : '…'} icon={Megaphone} tone="amber" />
-        <Stat label="Recorded Expenses" value={staff && !liquidations ? '…' : peso(expenses)} icon={PhilippinePeso} tone="green" />
+        {staff && <Stat label="Recorded Expenses" value={!liquidations ? '…' : peso(expenses)} icon={PhilippinePeso} tone="green" />}
       </div>
 
       {!staff && (

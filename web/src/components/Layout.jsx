@@ -17,6 +17,7 @@ const MAIN = [
   ['/events', 'events', 'Events', CalendarDays],
   ['/documents', 'documents', 'Documents', FileText],
   ['/membership', 'membership', 'My Membership', IdCard],
+  ['/reports', 'myreports', 'Reports', BarChart3],
 ];
 const MANAGEMENT = [
   ['/finance', 'finance', 'Financial Management', PhilippinePeso],

@@ -16,10 +16,12 @@ function lastSeen(p) {
   return `Last active ${fmtDateTime(p.last_active)}`;
 }
 
-function ChatPane({ thread, peerOnline, peerStatus, onCall }) {
+function ChatPane({ thread, peerOnline, peerStatus, onCall, onDeleteChat }) {
   const { uid, user } = useSession();
   const base = `dms/${thread.id}`;
-  const messages = useCollection(`${base}/messages`, { orderBy: ['date_sent', 'asc'] });
+  const all = useCollection(`${base}/messages`, { orderBy: ['date_sent', 'asc'] });
+  // Messages from before "Delete conversation" stay hidden for this user only.
+  const messages = all && all.filter((m) => (m.date_sent || 0) > (thread.cleared || 0));
   const [text, setText] = useState('');
   const [deleting, setDeleting] = useState(null);
   const bodyRef = useRef(null);
@@ -50,6 +52,7 @@ function ChatPane({ thread, peerOnline, peerStatus, onCall }) {
     });
     await api.update(base, {
       last_message: body, last_time: now, last_sender_uid: uid, [`unread_${thread.peerUid}`]: api.inc(1),
+      [`hidden_${uid}`]: false, [`hidden_${thread.peerUid}`]: false,
     });
   };
 
@@ -63,7 +66,10 @@ function ChatPane({ thread, peerOnline, peerStatus, onCall }) {
             <div className="convo-status"><span className={`status-dot${peerOnline ? ' on' : ''}`} />{peerStatus}</div>
           </div>
         </div>
-        <button className="btn light" onClick={onCall}><Video /> Video Call</button>
+        <div className="row">
+          <button className="btn light" onClick={onCall}><Video /> Video Call</button>
+          <button className="btn light" style={{ color: 'var(--red)' }} onClick={onDeleteChat} title="Delete this whole conversation"><Trash2 size={16} /> Delete chat</button>
+        </div>
       </div>
       <div className="chat-body" ref={bodyRef}>
         {!messages ? <Loading /> : messages.length === 0 ? <div className="empty" style={{ margin: 'auto' }}>No messages yet. Say hello!</div> : messages.map((m, i) => {
@@ -136,17 +142,28 @@ export default function Messenger() {
   const presence = useCollection('presence');
   const [active, setActive] = useState('');
   const [picking, setPicking] = useState(false);
+  const [removing, setRemoving] = useState(null);
   const pres = (id) => (presence || []).find((p) => p.id === id);
 
-  const threads = useMemo(() => (dms || []).map((d) => {
+  const threads = useMemo(() => (dms || []).filter((d) => !d[`hidden_${uid}`]).map((d) => {
     const peer = (d.members || []).find((m) => m !== uid) || '';
     return {
       id: d.id, peerUid: peer, title: d.names?.[peer] || 'User',
-      last_time: d.last_time || 0, sub: d.last_message || 'New conversation', unread: d[`unread_${uid}`] || 0,
+      last_time: d.last_time || 0, unread: d[`unread_${uid}`] || 0, cleared: d[`cleared_${uid}`] || 0,
+      sub: (d.last_time || 0) > (d[`cleared_${uid}`] || 0) ? (d.last_message || 'New conversation') : 'New conversation',
     };
   }).sort((a, b) => b.last_time - a.last_time), [dms, uid]);
 
-  useEffect(() => { if (!active && threads.length) setActive(threads[0].id); }, [threads, active]);
+  useEffect(() => {
+    if ((!active || !threads.some((t) => t.id === active)) && threads.length) setActive(threads[0].id);
+  }, [threads, active]);
+
+  // Delete the whole conversation for me (like Messenger): it disappears from
+  // my list and its old messages stay hidden for me; the other person keeps theirs.
+  const deleteChat = async (t) => {
+    await api.update(`dms/${t.id}`, { [`hidden_${uid}`]: true, [`cleared_${uid}`]: Date.now(), [`unread_${uid}`]: 0 });
+    if (active === t.id) setActive('');
+  };
   const current = threads.find((t) => t.id === active);
 
   const pick = async (u) => {
@@ -155,6 +172,7 @@ export default function Messenger() {
     await api.set(`dms/${id}`, {
       members: [uid, u.id].sort(),
       names: { [uid]: user.full_name || user.username, [u.id]: u.full_name || u.username },
+      [`hidden_${uid}`]: false,
     }, { merge: true });
     setActive(id);
   };
@@ -175,6 +193,8 @@ export default function Messenger() {
                 <div className="convo-sub">{t.sub}</div>
               </div>
               {t.unread > 0 && <span className="unread">{t.unread}</span>}
+              <span className="convo-del" role="button" title="Delete conversation"
+                onClick={(e) => { e.stopPropagation(); setRemoving(t); }}><Trash2 size={15} /></span>
             </button>
           ))}
         </div>
@@ -184,11 +204,20 @@ export default function Messenger() {
             thread={current}
             peerOnline={isOnline(pres(current.peerUid))}
             peerStatus={lastSeen(pres(current.peerUid))}
+            onDeleteChat={() => setRemoving(current)}
             onCall={() => startCall({ calleeType: 'user', calleeUid: current.peerUid, conversationId: current.id, memberId: '', name: current.title })}
           />
         ) : <div className="card empty">Choose a chat, or click "+ New Message".</div>}
       </div>
       {picking && <PeoplePicker onPick={pick} onClose={() => setPicking(false)} />}
+      {removing && (
+        <Confirm
+          title="Delete conversation?"
+          message={`Your whole chat with ${removing.title} will be deleted from your Messenger. ${removing.title} will still have their copy.`}
+          onConfirm={() => deleteChat(removing)}
+          onClose={() => setRemoving(null)}
+        />
+      )}
     </>
   );
 }

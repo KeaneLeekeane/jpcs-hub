@@ -281,3 +281,8 @@ textarea.input { resize: vertical; min-height: 90px; }
 .bubble.deleted { background: transparent !important; color: var(--muted) !important; font-style: italic; border: 1px dashed #cfd6e4 !important; }
 .bubble.deleted .meta { color: var(--muted) !important; }
 .msg-row.theirs .msg-del { order: 3; }
+.convo-del { margin-left: auto; color: var(--red); opacity: 0; padding: 6px; border-radius: 6px; display: inline-flex; flex-shrink: 0; }
+.convo .unread + .convo-del { margin-left: 6px; }
+.convo:hover .convo-del, .convo.active .convo-del { opacity: .75; }
+.convo-del:hover { opacity: 1 !important; background: var(--red-soft); }
+@media (hover: none) { .convo-del { opacity: .6; } }

@@ -48,11 +48,9 @@ function ExpenseCard({ eventId, liq }) {
   const { uid } = useSession();
   const [form, setForm] = useState({ description: '', category: CATEGORIES[0], amount: '' });
   const [receipt, setReceipt] = useState(null);
-  const [proof, setProof] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const r1 = useRef(null);
-  const r2 = useRef(null);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const locked = !liq || LOCKED.includes(liq.status);
 
@@ -64,16 +62,14 @@ function ExpenseCard({ eventId, liq }) {
     setBusy(true);
     try {
       const rec = receipt ? await api.upload(receipt, `receipts/${eventId}`) : null;
-      const prf = proof ? await api.upload(proof, `proofs/${eventId}`) : null;
       await api.add('expense_items', {
         liquidation_id: eventId, event_id: eventId, description: form.description.trim(), category: form.category,
-        amount, receipt_url: rec?.url || '', proof_url: prf?.url || '', date_recorded: Date.now(), recorded_by: uid,
+        amount, receipt_url: rec?.url || '', date_recorded: Date.now(), recorded_by: uid,
       });
       await api.update(`liquidations/${eventId}`, { total_amount: api.inc(amount) });
       setForm({ description: '', category: CATEGORIES[0], amount: '' });
-      setReceipt(null); setProof(null);
+      setReceipt(null);
       if (r1.current) r1.current.value = '';
-      if (r2.current) r2.current.value = '';
     } catch (err) {
       setError(authError(err));
     } finally { setBusy(false); }
@@ -95,14 +91,9 @@ function ExpenseCard({ eventId, liq }) {
           <input className="input" type="number" min="0" step="0.01" placeholder="Enter amount" value={form.amount} onChange={set('amount')} required disabled={locked} />
         </Field>
       </div>
-      <div className="grid g2" style={{ gap: '0 16px' }}>
-        <Field label="Official Receipt">
-          <div className="file-box"><input ref={r1} type="file" accept="image/*,application/pdf" onChange={(e) => setReceipt(e.target.files?.[0] || null)} disabled={locked} /></div>
-        </Field>
-        <Field label="Proof of Purchase (photo)">
-          <div className="file-box"><input ref={r2} type="file" accept="image/*" onChange={(e) => setProof(e.target.files?.[0] || null)} disabled={locked} /></div>
-        </Field>
-      </div>
+      <Field label="Official Receipt">
+        <div className="file-box"><input ref={r1} type="file" accept="image/*,application/pdf" onChange={(e) => setReceipt(e.target.files?.[0] || null)} disabled={locked} /></div>
+      </Field>
       <button className="btn" disabled={busy || locked}>{busy ? 'Saving…' : 'Add Expense'}</button>
     </form>
   );
@@ -206,22 +197,21 @@ export default function Finance() {
             {!items ? <Loading /> : (
               <div className="table-wrap">
                 <table className="table">
-                  <thead><tr><th>Description</th><th>Category</th><th>Amount</th><th>Receipt</th><th>Proof</th><th>Date Recorded</th>{editable && <th className="no-print" />}</tr></thead>
+                  <thead><tr><th>Description</th><th>Category</th><th>Amount</th><th>Receipt</th><th>Date Recorded</th>{editable && <th className="no-print" />}</tr></thead>
                   <tbody>
-                    {items.length === 0 && <tr><td colSpan={7}>No expenses recorded yet.</td></tr>}
+                    {items.length === 0 && <tr><td colSpan={6}>No expenses recorded yet.</td></tr>}
                     {items.map((it) => (
                       <tr key={it.id}>
                         <td>{it.description}</td>
                         <td>{it.category}</td>
                         <td>{peso(it.amount)}</td>
                         <td><Attachment url={it.receipt_url} label="Official receipt" /></td>
-                        <td><Attachment url={it.proof_url} label="Proof of purchase" /></td>
                         <td>{fmtDateTime(it.date_recorded)}</td>
                         {editable && <td className="no-print"><button className="chip-btn del" onClick={() => setDeleting(it)}>Delete</button></td>}
                       </tr>
                     ))}
                     {items.length > 0 && (
-                      <tr><td><b>Total</b></td><td /><td><b>{peso(total)}</b></td><td colSpan={4} /></tr>
+                      <tr><td><b>Total</b></td><td /><td><b>{peso(total)}</b></td><td colSpan={3} /></tr>
                     )}
                   </tbody>
                 </table>
