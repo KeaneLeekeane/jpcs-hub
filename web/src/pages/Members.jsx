@@ -46,10 +46,10 @@ function MemberForm({ member, onClose }) {
         data.uid = studentUid;
         data.username = username;
       } else if (member.uid) {
-        await api.update(`users/${member.uid}`, {
-          full_name: fullName, email: data.email,
-          status: data.membership_status === 'Inactive' ? 'inactive' : 'active',
-        });
+        // A self-registered student stays unable to log in while still Pending.
+        const status = data.membership_status === 'Inactive' ? 'inactive'
+          : (member.self_registered && data.membership_status === 'Pending') ? 'pending' : 'active';
+        await api.update(`users/${member.uid}`, { full_name: fullName, email: data.email, status });
       }
       if (isNew) await api.set(`members/${id}`, { ...data, uid: data.uid || '', username: data.username || '', date_registered: Date.now() });
       else await api.update(`members/${id}`, data);
@@ -105,13 +105,45 @@ function MemberForm({ member, onClose }) {
 }
 
 export default function Members() {
+  const { uid, user } = useSession();
   const members = useCollection('members', { orderBy: ['student_no', 'asc'] });
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [rejecting, setRejecting] = useState(null);
+  const [error, setError] = useState('');
+
+  const awaiting = (m) => !!m.self_registered && m.membership_status === 'Pending';
+  const pendingCount = (members || []).filter(awaiting).length;
+
+  const approve = async (m) => {
+    setError('');
+    try {
+      await api.update(`users/${m.uid}`, { status: 'active' });
+      await api.update(`members/${m.id}`, { membership_status: 'Active', approved_by: uid, date_approved: Date.now() });
+    } catch (err) { setError(authError(err)); }
+  };
+
+  // Admin: removes the registration completely (the login erases itself on
+  // the next sign-in attempt). Officers: the login is blocked and the record removed.
+  const reject = async (m) => {
+    setError('');
+    try {
+      if (user.role === 'admin') {
+        await api.batch([
+          { op: 'set', path: `deleted_users/${m.uid}`, data: { username: m.username || '', deleted_by: uid, date_deleted: Date.now() } },
+          { op: 'delete', path: `users/${m.uid}` },
+          { op: 'delete', path: `members/${m.id}` },
+        ]);
+      } else {
+        await api.update(`users/${m.uid}`, { status: 'inactive' });
+        await api.remove(`members/${m.id}`);
+      }
+    } catch (err) { setError(authError(err)); }
+  };
 
   const term = q.trim().toLowerCase();
-  const rows = (members || []).filter((m) => !term || [m.student_no, m.first_name, m.last_name, m.email, m.course, m.membership_status]
+  const rows = [...(members || [])].sort((a, b) => Number(awaiting(b)) - Number(awaiting(a))).filter((m) => !term || [m.student_no, m.first_name, m.last_name, m.email, m.course, m.membership_status]
     .join(' ').toLowerCase().includes(term));
 
   const remove = async (m) => {
@@ -124,6 +156,12 @@ export default function Members() {
       <PageHead title="Membership Records" sub="View and manage JPCS member information.">
         <button className="btn" onClick={() => setEditing({})}>+ Add Member</button>
       </PageHead>
+      {pendingCount > 0 && (
+        <div className="note" style={{ marginBottom: 16 }}>
+          <b>{pendingCount}</b> new registration{pendingCount === 1 ? '' : 's'} waiting for approval. Use <b>Approve</b> or <b>Reject</b> in the list below.
+        </div>
+      )}
+      {error && <div className="error">{error}</div>}
       <div className="card">
         <div className="row" style={{ marginBottom: 18 }}>
           <input className="input" style={{ maxWidth: 320 }} placeholder="Search member..." value={q} onChange={(e) => setQ(e.target.value)} />
@@ -148,6 +186,12 @@ export default function Members() {
                     <td><StatusBadge value={m.membership_status} /></td>
                     <td className="small">{m.username || <span className="muted">—</span>}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
+                      {awaiting(m) && (
+                        <>
+                          <button className="chip-btn edit" style={{ background: '#16a34a', color: '#fff' }} onClick={() => approve(m)}>Approve</button>
+                          <button className="chip-btn del" onClick={() => setRejecting(m)}>Reject</button>
+                        </>
+                      )}
                       <button className="chip-btn edit" onClick={() => setEditing(m)}>Edit</button>
                       <button className="chip-btn del" onClick={() => setDeleting(m)}>Delete</button>
                     </td>
@@ -159,6 +203,15 @@ export default function Members() {
         )}
       </div>
       {editing && <MemberForm member={editing} onClose={() => setEditing(null)} />}
+      {rejecting && (
+        <Confirm
+          title="Reject registration?"
+          message={`${rejecting.first_name} ${rejecting.last_name} (${rejecting.student_no}) will not be able to log in and the registration will be removed.`}
+          confirmLabel="Reject"
+          onConfirm={() => reject(rejecting)}
+          onClose={() => setRejecting(null)}
+        />
+      )}
       {deleting && (
         <Confirm
           title="Delete member?"

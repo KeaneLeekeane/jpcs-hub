@@ -148,6 +148,7 @@ export const localBackend = {
       mutate(() => { state.auth[email] = { uid, password }; });
       return uid;
     },
+    register(login, password, opsFor) { return this.bootstrap(login, password, opsFor); },
     async bootstrap(login, password, opsFor) {
       const uid = await this.createAccount(login, password);
       mutate(() => { for (const o of opsFor(uid)) writeDoc(o.path, o.data, 'set'); });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, authError } from '../data/api';
 import { DEMO_ACCOUNTS } from '../data/seed';
@@ -9,6 +9,13 @@ export default function Login({ notice, clearNotice }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [needsSetup, setNeedsSetup] = useState(false);
+
+  // The admin setup link only shows while no admin exists yet.
+  useEffect(() => {
+    if (api.isDemo) return;
+    api.get('settings/bootstrap').then((d) => setNeedsSetup(!d)).catch(() => {});
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -56,8 +63,12 @@ export default function Login({ notice, clearNotice }) {
               Reset demo data
             </button>
           </div>
-        ) : (
-          <div className="small muted" style={{ marginTop: 16, textAlign: 'center' }}>
+        ) : null}
+        <div className="small muted" style={{ marginTop: 16, textAlign: 'center' }}>
+          Don't have an account? <Link to="/register">Create user account</Link>
+        </div>
+        {needsSetup && (
+          <div className="small muted" style={{ marginTop: 8, textAlign: 'center' }}>
             First time setting up? <Link to="/setup">Create the admin account</Link>
           </div>
         )}

@@ -31,6 +31,7 @@ export function useAuthState() {
         get(`deleted_users/${uid}`).then((d) => (d ? deleteSelf() : null)).catch(() => {})
           .finally(() => { signOutUser().catch(() => {}); });
       }
+      else if (doc.status === 'pending') { setNotice('Your account is waiting for approval by a JPCS officer. Please try again once it is approved.'); signOutUser(); }
       else if (doc.status === 'inactive') { setNotice('This account is deactivated. Please contact a JPCS officer.'); signOutUser(); }
       else setUser(doc);
     });

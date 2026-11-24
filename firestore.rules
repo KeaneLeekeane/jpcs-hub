@@ -7,7 +7,8 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
     function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
-    function active() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && me().status != 'inactive'; }
+    // Pending (self-registered, not yet approved) and inactive accounts are not active.
+    function active() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && !(me().status in ['inactive', 'pending']); }
     function role() { return me().role; }
     function isAdmin() { return active() && role() == 'admin'; }
     function isStaff() { return active() && role() in ['admin', 'officer', 'treasurer', 'auditor']; }
@@ -25,7 +26,7 @@ service cloud.firestore {
 
     // USER_ACCOUNT
     match /users/{uid} {
-      allow read: if active();
+      allow read: if active() || (signedIn() && request.auth.uid == uid);
       // First admin (only while setup has not been done) ...
       allow create: if (signedIn() && request.auth.uid == uid
                         && request.resource.data.role == 'admin'
@@ -33,7 +34,11 @@ service cloud.firestore {
                         && existsAfter(/databases/$(database)/documents/settings/bootstrap))
                     // ... staff accounts by the admin, student logins by admin/officers.
                     || isAdmin()
-                    || (isManager() && request.resource.data.role == 'student');
+                    || (isManager() && request.resource.data.role == 'student')
+                    // ... and student self-registration: own record, waiting for approval.
+                    || (signedIn() && request.auth.uid == uid
+                        && request.resource.data.role == 'student'
+                        && request.resource.data.status == 'pending');
       allow update: if isAdmin()
                     || (isManager() && resource.data.role == 'student' && request.resource.data.role == 'student');
       allow delete: if isAdmin();
@@ -63,7 +68,12 @@ service cloud.firestore {
     // MEMBER
     match /members/{id} {
       allow read: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow write: if isManager();
+      allow update, delete: if isManager();
+      // Officers add members; a self-registering student adds only their own Pending record.
+      allow create: if isManager()
+                    || (signedIn() && id == request.auth.uid
+                        && request.resource.data.uid == request.auth.uid
+                        && request.resource.data.membership_status == 'Pending');
     }
 
     // ANNOUNCEMENT and EVENT

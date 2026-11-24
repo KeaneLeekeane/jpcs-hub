@@ -58,6 +58,9 @@ export const firebaseBackend = {
         await deleteApp(tmp);
       }
     },
+    // Student self-registration: same as setup (new login + its records,
+    // written while signed in as that new user), then signs out again.
+    register(login, password, opsFor) { return this.bootstrap(login, password, opsFor); },
     // First-time setup: creates the first admin and writes its records while
     // signed in as that new admin (in a temporary app instance).
     async bootstrap(login, password, opsFor) {

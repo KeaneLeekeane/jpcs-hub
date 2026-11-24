@@ -63,7 +63,7 @@ export function StatusBadge({ value }) {
   const v = String(value || '');
   const tone = {
     Active: 'green', Approved: 'green', active: 'green', Upcoming: 'blue', Completed: 'green',
-    Pending: 'amber', 'For Review': 'amber', Draft: 'gray', Inactive: 'gray', inactive: 'red',
+    Pending: 'amber', 'For Review': 'amber', Draft: 'gray', Inactive: 'gray', inactive: 'red', pending: 'amber',
     Returned: 'red', Cancelled: 'red',
   }[v] || 'gray';
   const label = v === 'active' ? 'Active' : v === 'inactive' ? 'Deactivated' : v;

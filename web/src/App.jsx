@@ -7,6 +7,7 @@ import { CallProvider } from './components/Calls';
 import { ProfilesProvider } from './components/Avatar';
 import Login from './pages/Login';
 import Setup from './pages/Setup';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
 import Accounts from './pages/Accounts';
@@ -36,6 +37,9 @@ function useAuthSession() {
         api.get(`deleted_users/${uid}`).then((d) => (d ? api.auth.deleteSelf() : null)).catch(() => {})
           .finally(() => api.auth.signOut().catch(() => {}));
         setNotice('This account was deleted or has no JPCS HUB record. Please contact the JPCS admin.');
+      } else if (doc.status === 'pending') {
+        setNotice('Your account is waiting for approval by a JPCS officer. Please try again once it is approved.');
+        api.auth.signOut();
       } else if (doc.status === 'inactive') {
         setNotice('This account has been deactivated. Please contact the JPCS admin.');
         api.auth.signOut();
@@ -85,6 +89,7 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/setup" element={<Setup />} />
+          <Route path="/register" element={<Register />} />
           <Route path="*" element={<Login notice={session.notice} clearNotice={() => session.setNotice('')} />} />
         </Routes>
       </HashRouter>

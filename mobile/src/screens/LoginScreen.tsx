@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { authError, signIn } from '../firebase';
 import { colors } from '../theme';
@@ -46,7 +46,10 @@ export default function LoginScreen({ notice, clearNotice }: { notice: string; c
           <Pressable style={[s.btn, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Log In</Text>}
           </Pressable>
-          <Text style={s.hint}>Your login is given by the JPCS officers when your membership is recorded.</Text>
+          <Text style={s.hint}>
+            Don't have an account?{' '}
+            <Text style={s.link} onPress={() => Linking.openURL('https://keaneleekeane.github.io/jpcs-hub/#/register')}>Create user account</Text>
+          </Text>
         </View>
         <Text style={s.footer}>Pateros Technological College</Text>
       </ScrollView>
@@ -65,6 +68,7 @@ const s = StyleSheet.create({
   label: { fontWeight: '600', color: colors.text, marginBottom: 6, fontSize: 14 },
   input: { borderWidth: 1, borderColor: '#dbe1ec', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, marginBottom: 14, color: colors.text },
   btn: { backgroundColor: colors.blue, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  link: { color: '#1e4fc4', fontWeight: '700', textDecorationLine: 'underline' },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   error: { backgroundColor: '#fde8e8', color: '#c53030', padding: 10, borderRadius: 8, marginBottom: 14, fontSize: 13.5 },
   hint: { color: colors.muted, fontSize: 12.5, marginTop: 16, textAlign: 'center' },
